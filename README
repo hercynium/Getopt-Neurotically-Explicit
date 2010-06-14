@@ -1,0 +1,61 @@
+Getopt-Nearly-Everything
+
+I began writing this module after time and time again not having the
+features I wanted in any other CPAN module, in a simple, flexible 
+interface. Don't get me wrong - there are some *really* nice Getopt
+modules out there, but nothing else has *everything* I want in one
+tidy package, and nothing else has an interface that lets me be both
+*neurotically explicit* *and* obscenely lazy with the same API.
+
+This module currently has two names and one abbreviation, and I think 
+they are all apropos of both the above description of it's existence 
+and my state of mind when I found myself actually beginning to create it.
+
+ GoNE
+   Which is short for:
+     Getopt::Nearly::Everything
+       - OR -
+     Getopt::Neurotically::Explicit
+
+I intend this module to encompass just about every need one may have
+wrt. options processing... and it will work as a drop-in replacement
+for the venerable Getopt::Long.
+
+INSTALLATION
+
+To install this module, run the following commands:
+
+	perl Build.PL
+	./Build
+	./Build test
+	./Build install
+
+SUPPORT AND DOCUMENTATION
+
+After installing, you can find documentation for this module with the
+perldoc command.
+
+    perldoc Getopt::Nearly::Everything
+
+You can also look for information at:
+
+    RT, CPAN's request tracker
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Getopt-Nearly-Everything
+
+    AnnoCPAN, Annotated CPAN documentation
+        http://annocpan.org/dist/Getopt-Nearly-Everything
+
+    CPAN Ratings
+        http://cpanratings.perl.org/d/Getopt-Nearly-Everything
+
+    Search CPAN
+        http://search.cpan.org/dist/Getopt-Nearly-Everything/
+
+
+COPYRIGHT AND LICENCE
+
+Copyright (C) 2009 Steve Scaffidi
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+

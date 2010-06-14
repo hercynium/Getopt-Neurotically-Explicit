@@ -1,0 +1,37 @@
+
+Flag Options:
+  * do not need an option, just their presence (or absence)
+  * --help --man --version --about
+  
+  Negatable Flag Options:
+    * can be disabled by prefixing the option name with 'no'
+    * --nocache --no-cache --noverbose --no-logging
+  
+  Incremental Flag Options:
+    * The number of times specified on the command line change their behavior
+    * -vvv (verbose) -www (warnings) -ddd (debug level)
+
+
+Value Options:
+  * the option requires a value (integer, string, float)
+  * --foo=bar OR --foo bar OR -f5 OR -f=5 OR -f 5
+
+  Optional Value Options
+    * the option can have a value, but it is not necessary.
+
+  Multiple Value Options
+    * the option may have multiple values, or be used multiple times
+    * --lib=foo --lib=bar
+    * 
+
+
+End of Options Marker:
+  * nothing after it is processed by getopt*
+  * -- (all by it's lonesome)
+
+
+Bundling: I personally like it.
+  * Getopt::Long::Configure ("bundling");
+  * use Getopt::Long qw(:config bundling);
+  
+  
