@@ -48,7 +48,7 @@ my @OPTION_PARAMS = (
 
 
 for my $params ( @OPTION_PARAMS ) {
-    my $spec = $builder->build( $params );
+    my $spec = $builder->build( %$params );
     print Dumper $params, $spec;
     print "\n";
 }

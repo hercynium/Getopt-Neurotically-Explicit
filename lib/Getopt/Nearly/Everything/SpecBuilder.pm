@@ -1,11 +1,12 @@
+use strict;
+use warnings;
 package Getopt::Nearly::Everything::SpecBuilder;
-
-### Build a Getopt::Long option specification from 
-### the parameters passed in
+# ABSTRACT: Build a Getopt::Long option specification from a GoNE spec
 
 use Carp;
 use Data::Dumper;
 our @CARP_NOT = qw( Getopt::Nearly::Everything );
+
 
 our %DATA_TYPE_MAP = (
     integer => 'i',
@@ -21,32 +22,30 @@ our %DEST_TYPE_MAP = (
 
 
 sub new {
-    my ($class, $params_hash) = @_;
+    my ($class, %params) = @_;
 
-    my $self = bless {}, $class;
-
-    # the user can retrieve the results by calling spec()
-    $self->build( $params_hash ) if $params_hash;
+    my $self = bless { %params }, $class;
 
     return $self;
 }
 
 
 sub build {
-    my ($self, $params_hash) = @_;
+    my ($self, %params_hash) = @_;
     
-    my $name_spec = $self->_build_name_spec( $params_hash );
+    my $name_spec = $self->_build_name_spec( \%params_hash );
 
-    my $spec_type = $self->_spec_type( $params_hash );
+    my $spec_type = $self->_spec_type( \%params_hash );
 
-    my $arg_spec = $spec_type =~ /[:=]/ ? 
-        $arg_spec = $self->_build_arg_spec( $params_hash ) :
+    my $arg_spec = ($spec_type =~ /[:=]/) ? 
+        $self->_build_arg_spec( \%params_hash ) :
         '';
 
-    $self->{spec} = $name_spec . $spec_type . $arg_spec;
+    my $spec = $name_spec . $spec_type . $arg_spec;
     
-    return $self->built_spec();
+    return $spec;
 }
+
 
 sub _build_name_spec {
     my ($self, $params_hash) = @_;
@@ -64,6 +63,7 @@ sub _build_name_spec {
 
     return $name_spec;
 }
+
 
 sub _spec_type {
     my ($self, $params_hash) = @_;
@@ -112,25 +112,9 @@ sub _build_arg_spec {
     return $data_type . $dest_type . $repeat;
 }
 
-sub built_spec {
-    my ($self) = @_;
 
-    return $self->{spec};
-}
-
-
-
-1; # return true
+1 && q{this is probably crazier than the last thing I wrote}; # truth
 __END__
-
-
-=head1 NAME
-
-Getopt::Nearly::Everything::SpecBuilder - Build a Getopt::Long option specification
-
-=head1 VERSION
-
-Version 0.01
 
 =head1 SYNOPSIS
 
@@ -160,8 +144,7 @@ Here's an example of use:
     # OR...
     
     my $spec = 
-        Getopt::Nearly::Everything::SpecBuilder->new( %opt_params )
-            ->built_spec();
+        Getopt::Nearly::Everything::SpecBuilder->build( %opt_params );
 
 =head1 METHODS
 
@@ -175,55 +158,6 @@ return with built_spec()
 Build a Getopt::Long option specification from the parameters passed in (as 
 a hash or hashref) and return the spec as a string
 
-=head2 built_spec
-
-Return a previously built spec as a string. Returns false if no spec has been 
-built via new() or build()
-
-=head1 AUTHOR
-
-Steve Scaffidi, C<< <sscaffidi at cpan.org> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to 
-C<bug-getopt-nearly-everything at rt.cpan.org>, or through the web interface 
-at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Getopt-Nearly-Everything>.
-I will be notified, and then you'll automatically be notified of progress on 
-your bug as I make changes.
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Getopt::Nearly::Everything::SpecBuilder
-
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Getopt-Nearly-Everything>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Getopt-Nearly-Everything>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Getopt-Nearly-Everything>
-
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Getopt-Nearly-Everything/>
-
-=back
-
-
 =head1 SEE ALSO
 
 =over 4
@@ -234,13 +168,5 @@ L<http://search.cpan.org/dist/Getopt-Nearly-Everything/>
 
 =back
 
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2009 Steve Scaffidi, all rights reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
-
-=cut
 
 

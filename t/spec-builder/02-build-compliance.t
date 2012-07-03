@@ -63,13 +63,13 @@ for my $test_datum ( @TEST_DATA ) {
     my $valid_test_descr = "valid params are accepted by new()";
 
     my $params_are_valid
-        = lives_ok( sub { $CLASS->new( $opt_params ) }, $valid_test_descr );
+        = lives_ok( sub { $CLASS->build( %$opt_params ) }, $valid_test_descr );
 
     SKIP: {
         skip( "additional compliance tests not needed on bad params", 2 )
             unless $params_are_valid;
 
-        my $built_spec = $CLASS->new( $opt_params )->built_spec();
+        my $built_spec = $CLASS->build( %$opt_params );
         is( $built_spec, $expected_spec,
             "matches the expected spec [$expected_spec]" );
 
