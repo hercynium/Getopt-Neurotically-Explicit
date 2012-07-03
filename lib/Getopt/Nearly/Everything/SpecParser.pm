@@ -108,7 +108,7 @@ our $ARG_SPEC_QR = qr{
         (\d+)?        # min repetitions as $5
         (?:
             [,]
-            (\d+)?    # max repetitions as $6
+            (\d*)? # max repetitions as $6
         )?
         [}]
     )?
@@ -200,7 +200,7 @@ sub _process_arg_spec {
     my $incr_type    = $3;
     my $dest_type    = $4 ? $4 : '';
     $params{min_rep} = $5 ? $5 : -1;
-    $params{max_rep} = $6 ? $6 : -1;
+    $params{max_rep} = $6;
 
     if ( $opt_type eq ':' && defined $default_num ) {
         $params{default} = $default_num;
@@ -232,11 +232,11 @@ sub _process_arg_spec {
     $params{multi} = 1 if $params{dest_type} eq 'hash'
                        || $params{dest_type} eq 'array'
                        || $params{min_rep} > 1 
-                       || $params{max_rep} > 1 
+                       || (defined $params{max_rep} and $params{max_rep} > 1) 
                        || $params{opt_type} eq 'incr';
 
     delete $params{min_rep} if $params{min_rep} < 0;
-    delete $params{max_rep} if $params{max_rep} < 1;
+    delete $params{max_rep} if !defined $params{max_rep};
 
     return %params;
 }

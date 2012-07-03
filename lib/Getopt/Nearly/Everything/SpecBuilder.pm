@@ -76,7 +76,7 @@ sub _spec_type {
     return ':' if ! defined $params_hash->{opt_type};
     return '+' if $params_hash->{opt_type} =~ '^incr';
     return ''  if $params_hash->{opt_type} eq 'flag';
-    die "FUCK" #return ':';
+    return ':';
 }
 
 
@@ -108,9 +108,14 @@ sub _build_arg_spec {
     # perhaps that should be validated elsewhere...
     # maybe yet another package.
 
-    my $repeat = 
-        defined $params_hash->{min_rep} || defined $params_hash->{max_rep} ?
-        "{$params_hash->{min_rep},$params_hash->{max_rep}}" : '';
+    my $repeat = '';
+    if ( defined $params_hash->{min_rep} || defined $params_hash->{max_rep} ) {
+        $repeat .= '{';
+        $repeat .= $params_hash->{min_rep} if defined $params_hash->{min_rep};
+        $repeat .= "," . (defined $params_hash->{max_rep} ? $params_hash->{max_rep} : '')
+            if exists $params_hash->{max_rep};
+        $repeat .= '}';
+    }
 
     return $data_type . $dest_type . $repeat;
 }
@@ -123,15 +128,16 @@ __END__
 
 This module builds a Getopt::Long option specification from a hash of option
 parameters as would be returned by Getopt::Nearly::Everything::SpecParser->parse($spec)
-and/or Getopt::Nearly::Everything->opt_params($opt_name).
+and/or Getopt::Nearly::Everything->opt($opt_name)->params().
 
 Here's an example of use:
 
     use Getopt::Nearly::Everything::SpecBuilder;
 
     my %opt_params = (
+        opt_type       => 'value'
         value_required => 1,
-        data_type      => 'string',
+        value_type     => 'string',
         max_rep        => '5',
         dest_type      => 'array',
         min_rep        => '1',
