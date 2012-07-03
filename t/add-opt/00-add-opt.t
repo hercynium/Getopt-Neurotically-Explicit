@@ -59,7 +59,7 @@ $opts->add_opt(
 
 for my $name ($opts->opt_names) {
   my $opt = $opts->opt($name);
-  diag Dumper($opt, $opt->spec);
+  #diag Dumper($opt, $opt->spec);
 }
 
 done_testing;
