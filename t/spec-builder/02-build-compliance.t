@@ -14,7 +14,7 @@ use Test::Exception;
 my @TEST_DATA = (
     [
         {
-            'data_type' => 'flag',
+            'opt_type' => 'flag',
             'aliases'   => [],
             'name'      => 'foo',
         },
@@ -24,7 +24,7 @@ my @TEST_DATA = (
         {
             'name'      => 'bar',
             'aliases'   => ['b'],
-            'data_type' => 'flag',
+            'opt_type' => 'flag',
         },
         'bar|b',
     ],

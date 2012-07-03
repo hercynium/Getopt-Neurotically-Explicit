@@ -18,6 +18,7 @@ our %DATA_TYPE_MAP = (
 our %DEST_TYPE_MAP = (
     array => '@',
     hash  => '%',
+    'scalar' => '',
 );
 
 
@@ -57,8 +58,8 @@ sub _build_name_spec {
     croak "option parameter [aliases] must be an array ref\n"
         unless ref $params_hash->{aliases} eq 'ARRAY';
 
-    my $name_spec = join( '|', 
-        $params_hash->{name}, 
+    my $name_spec = join( '|', grep { defined $_ and length $_ } 
+        $params_hash->{name}, $params_hash->{short},
         @{ $params_hash->{aliases}  } );
 
     return $name_spec;
@@ -71,17 +72,19 @@ sub _spec_type {
     # note: keep in mind - order is important here!
     # yes, I know, this could be written with ternary ?:
     return '=' if $params_hash->{value_required};
-    return '!' if $params_hash->{negatable};
-    return ''  if $params_hash->{data_type} eq 'flag';
-    return ':';
+    return '!' if $params_hash->{negations};
+    return ':' if ! defined $params_hash->{opt_type};
+    return '+' if $params_hash->{opt_type} =~ '^incr';
+    return ''  if $params_hash->{opt_type} eq 'flag';
+    die "FUCK" #return ':';
 }
 
 
 sub _build_arg_spec {
     my ($self, $params_hash) = @_;
 
-    my $data_type = $DATA_TYPE_MAP{ $params_hash->{data_type} } or
-        croak "invalid data type [$params_hash->{data_type}]\n"
+    my $data_type = $DATA_TYPE_MAP{ $params_hash->{value_type} || 'integer' } or
+        croak "invalid value type [$params_hash->{value_type}]\n"
             . "  valid types: ['" 
             . join( "', '", keys %DATA_TYPE_MAP ) 
             . "']\n";

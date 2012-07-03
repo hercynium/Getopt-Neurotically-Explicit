@@ -45,21 +45,41 @@ sub parse {
     my %arg_params  = $self->_process_arg_spec( $opt_type, $arg_spec );
 
     # I feel that this block should be relocated... but WHERE?
-    if ( $arg_params{negatable} and !$CUR_OPTS->{no_negation} ) {
+    if ( $arg_params{negatable} ) {
 
         my @neg_names = $self->_generate_negation_names( 
-            $name_params{name}, 
+            $name_params{name},
+            $name_params{short},
             @{ $name_params{aliases} } 
         );
-        push @{ $name_params{aliases} }, @neg_names;
+        push @{ $name_params{negations} }, @neg_names;
     }
 
     undef $CUR_OPT_SPEC; # done with global var.
     undef $CUR_OPTS;     # ditto
 
-    my %result = (%name_params, %arg_params);
+    my %result = $self->_fill_params(%name_params, %arg_params);
 
     return wantarray ? %result : \%result;
+}
+
+### if the spec shows that negation is allowed, 
+### generate "no* names" for each name and alias.
+sub _generate_negation_names {
+    my ($self, @names) = @_;
+    my @neg_names = map { ("no-$_", "no$_") } grep { length } @names;
+    return @neg_names;
+}
+
+# Fills in various parameters from the ones already known
+sub _fill_params {
+    my ($self, %params) = @_;
+
+    # TODO fill in stuff
+    $params{opt_type} ||= 'flag';
+
+
+    return %params;
 }
 
 
@@ -106,7 +126,13 @@ sub _process_name_spec {
     my %params;
 
     $params{name}     = $1;
-    $params{aliases}  = [ grep { $_ } split( '[|]', $2) ];
+    $params{long}     = $1;
+    $params{aliases}  = [
+        grep { defined $_ }
+        map  { (length($_) == 1 and !$params{short}) ? ($params{short} = $_ and undef) : $_ }
+        grep { $_ }
+        split( '[|]', $2)
+    ];
 
     return %params;
 }
@@ -124,14 +150,14 @@ sub _process_opt_type {
                 . "[$opt_type] does not take an argument spec.";
         }
         if ( $opt_type eq '+' ) {
-           $params{data_type} = 'incr'; # incrementing number
+           $params{opt_type} = 'incr'; # incrementing number
         }
         if ( $opt_type eq '!' ) {
-            $params{data_type} = 'flag'; # boolean, 
+            $params{opt_type} = 'flag'; # boolean, 
             $params{negatable} = 1; # allow no- for negation
         }
         if ( $opt_type eq '' ) {
-            $params{data_type} = 'flag'; # boolean
+            $params{opt_type} = 'flag'; # boolean
         }
         return %params;
     }
@@ -169,7 +195,7 @@ sub _process_arg_spec {
         croak "Could not parse the argument part of the option spec "
             . "[$CUR_OPT_SPEC].\n";
     }
-    my $data_type    = $1;
+    my $value_type    = $1;
     my $default_num  = $2;
     my $incr_type    = $3;
     my $dest_type    = $4 ? $4 : '';
@@ -180,17 +206,18 @@ sub _process_arg_spec {
         $params{default} = $default_num;
     }
     elsif ( $opt_type eq ':' && defined $incr_type ) {
-        $params{data_type} = 'incr';
+        $params{opt_type} = 'incr';
     }
-    elsif (! $data_type ) {
+    elsif (! $value_type ) {
         croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
             . "[$opt_type] must be followed by a valid data type.\n";
     } else {
-        $params{data_type} = $data_type eq 's' ? 'string' 
-                           : $data_type eq 'i' ? 'integer'
-                           : $data_type eq 'o' ? 'extint'
-                           : $data_type eq 'f' ? 'real'
-                           : die "This should never happen. Ever.";
+        $params{value_type} = $value_type eq 's' ? 'string' 
+                            : $value_type eq 'i' ? 'integer'
+                            : $value_type eq 'o' ? 'extint'
+                            : $value_type eq 'f' ? 'real'
+                            : die "This should never happen. Ever.";
+        $params{opt_type} = 'value';
     }
 
     $params{dest_type} = 'hash'  if $dest_type eq '%';
@@ -198,38 +225,25 @@ sub _process_arg_spec {
 
     $params{default} = $default_num if $default_num; 
 
-    $params{data_type} ||= '';
+    $params{value_type} ||= '';
+    $params{multi_type} ||= '';
     $params{dest_type} ||= '';
+    $params{opt_type} ||= '';
     $params{multi} = 1 if $params{dest_type} eq 'hash'
                        || $params{dest_type} eq 'array'
                        || $params{min_rep} > 1 
                        || $params{max_rep} > 1 
-                       || $params{data_type} eq 'incr';
+                       || $params{opt_type} eq 'incr';
+
+    delete $params{min_rep} if $params{min_rep} < 0;
+    delete $params{max_rep} if $params{max_rep} < 1;
 
     return %params;
 }
 
 
-### if the spec shows that negation is allowed, 
-### generate "no* names" for each name and alias.
-sub _generate_negation_names {
-    my ($self, @names) = @_;
-    my @neg_names = map { ("no-$_", "no$_") } @names;
-    return @neg_names;
-}
-
-
 1 && q{there's nothing like re-inventing the wheel!}; # truth
 __END__
-
-
-=head1 NAME
-
-Getopt::Nearly::Everything::SpecParser - Parse a Getopt::Long option specification
-
-=head1 VERSION
-
-Version 0.01
 
 =head1 SYNOPSIS
 

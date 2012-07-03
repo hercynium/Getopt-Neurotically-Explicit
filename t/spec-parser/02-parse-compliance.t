@@ -94,7 +94,12 @@ sub check_name_compliance {
     my $gone_name    = $gone_data->{name};
     my @gone_aliases = @{ $gone_data->{aliases} };
 
-    my %gone_names = map { $_ => 1 } $gone_name, @gone_aliases;
+    my %gone_names =
+        map  { $_ => 1 }
+        grep { $_ and length $_ }
+        $gone_name, @gone_aliases, $gone_data->{short}, @{$gone_data->{negations}};
+
+#        print Dumper($gone_data, $opctl, $opt_name); exit;
 
     my @missing_from_gone
         = grep { !exists $gone_names{$_} } sort keys %$opctl;

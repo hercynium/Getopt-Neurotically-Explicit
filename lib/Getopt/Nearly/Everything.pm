@@ -1,10 +1,7 @@
-use strict;
-use warnings;
 package Getopt::Nearly::Everything;
 # ABSTRACT: Nearly everything you'd ever want from a Getopt module!
-
 # AKA, Getopt::Neurotically::Explicit, or GoNE
-
+use Moo;
 use Carp;
 use Exporter;
 use Data::Dumper;
@@ -12,36 +9,26 @@ use Data::Dumper;
 
 # Turns a Getopt::Long (GoL) spec into args for GoNE
 use Getopt::Nearly::Everything::SpecParser;
+use Getopt::Nearly::Everything::Option;
 
-
-# Base Getopt::Long config flags to use for GoNE
-use Getopt::Long qw(
-  :config
-    ignore_case
-    gnu_getopt
-    bundling_override
-    no_auto_abbrev
-);
-
-
-our @ISA = qw(Exporter);
-
-
-sub new {
-    my ($class, %params) = @_;
-
-    my $self = bless {}, $class;
-
-    return $self;
-}
-
+## Base Getopt::Long config flags to use for GoNE
+#use Getopt::Long qw(
+#  :config
+#    ignore_case
+#    gnu_getopt
+#    bundling_override
+#    no_auto_abbrev
+#);
 
 sub add_opt {
     my ($self, %params) = @_;
 
     my %opt_params = $self->_process_params( %params );
 
-    print Dumper \%opt_params;
+    my $opt = Getopt::Nearly::Everything::Option->new(%opt_params);
+
+    $self->{opts}{$opt->name} = $opt;
+
     return $self;
 }
 
@@ -49,82 +36,35 @@ sub add_opt {
 sub _process_params {
     my ($self, %params) = @_;
 
-    # Extract params from a Getopt::Long option specification
-    # and merge into the passed params.
+    # If a GoL spec was used,parse it into GoNE params
+    # and merge those into the passed params.
     if ( exists $params{spec} ) {
         my %more_params = 
             Getopt::Nearly::Everything::SpecParser->parse( $params{spec} );
 
         while ( my ($key, $val) = each %more_params ) {
             if (exists $params{$key}) {
-                croak "The parameter [$key] was both passed to add_opt() and "
-                    . "parsed from the spec. Please remove one or the other.";
+                croak "The parameter [$key] was both passed to add_opt() and parsed "
+                    . "from the spec [$params{spec}]. Please change one or the other.";
             }
             $params{$key} = $val;
         }    
     }
 
-    %params = $self->_fill_params( %params );
-
-    $params{spec} = $self->_generate_opt_spec( %params )
-        unless exists $params{spec};
+    # we no longer need the spec if it was used.
+    delete $params{spec};
 
     return %params;
 }
 
-
-# Generate an option specifier from the given parameters
-sub _generate_opt_spec {
-    my ($self, %params) = @_;
-
-    croak "Every option requires a name, or a valid Getopt::Long spec.\n"
-        unless $params{name};
-
-    my $spec = join '|', grep { $_ } 
-        $params{name},
-        $params{short},
-        $params{long}, 
-        @{ $params{aliases} ||= [] };
-
-    if ( ! exists $params{value_required} ) {
-        return $spec . '!' if ! defined $params{data_type};
-        return $spec . '!' if $params{data_type} eq 'flag';
-        return $spec . '+' if $params{data_type} eq 'incr';
-    }
-
-    # TODO more stuff
-    return;
-
+sub opt_names {
+  my ($self) = @_;
+  return keys %{$self->{opts} || {}}
 }
 
-
-# Fills in various parameters from the ones already known
-sub _fill_params {
-    my ($self, %params) = @_;
-    
-    # TODO fill in stuff
-    $params{data_type} ||= 'flag';
-
-
-    return %params;
-}
-
-
-# This sub cribbed from Data::Dump::Streamer to support
-# making an alias for this package's name in the symbol table.
-sub import {
-    my ($pkg) = @_;
-    my ($idx, $alias);
-
-    if ($idx = (grep lc($_[$_]) eq 'as', 0..$#_)) {
-        #print "found alias at $idx:\n";
-        ($idx, $alias) = splice(@_, $idx, 2);
-        #print "found alias: $idx => $alias\n";
-
-        no strict 'refs';
-        *{$alias.'::'} = *{__PACKAGE__.'::'};
-    }
-    $pkg->export_to_level(1,@_);
+sub opt {
+  my ($self, $opt_name) = @_;
+  return $self->{opts}{$opt_name};
 }
 
 
@@ -144,7 +84,7 @@ __END__
       short     => "f"       # use as -f
       long      => "foo"     # use as --foo
       aliases   => "bar|baz" # use as --bar or --baz
-      data_type => "string"  # option type (string|flag|num|hash|etc...)
+      dest_type => "string"  # option type (string|flag|inte...)
       multi     => "no"      # allow option to be specified multiple
                              # times (no|yes|group)
       default   => "wibble"  # default value if none specified
