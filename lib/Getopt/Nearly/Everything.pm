@@ -1,18 +1,18 @@
-package Getopt::Nearly::Everything;
-
-# AKA, Getopt::Neurotically::Explicit, or GoNE
-
-our $VERSION = '0.01';
-
 use strict;
 use warnings;
+package Getopt::Nearly::Everything;
+# ABSTRACT: Nearly everything you'd ever want from a Getopt module!
+
+# AKA, Getopt::Neurotically::Explicit, or GoNE
 
 use Carp;
 use Exporter;
 use Data::Dumper;
 
+
 # Turns a Getopt::Long (GoL) spec into args for GoNE
 use Getopt::Nearly::Everything::SpecParser;
+
 
 # Base Getopt::Long config flags to use for GoNE
 use Getopt::Long qw(
@@ -22,7 +22,6 @@ use Getopt::Long qw(
     bundling_override
     no_auto_abbrev
 );
-
 
 
 our @ISA = qw(Exporter);
@@ -36,6 +35,7 @@ sub new {
     return $self;
 }
 
+
 sub add_opt {
     my ($self, %params) = @_;
 
@@ -44,6 +44,7 @@ sub add_opt {
     print Dumper \%opt_params;
     return $self;
 }
+
 
 sub _process_params {
     my ($self, %params) = @_;
@@ -70,6 +71,7 @@ sub _process_params {
 
     return %params;
 }
+
 
 # Generate an option specifier from the given parameters
 sub _generate_opt_spec {
@@ -126,18 +128,9 @@ sub import {
 }
 
 
-
-'GoNE, baby GoNE';
+1 && q{GoNE, baby GoNE}; # truth
 
 __END__
-
-=head1 NAME
-
-Getopt::Nearly::Everything - Nearly everything you'd ever want from a Getopt module!
-
-=head1 VERSION
-
-Version 0.01
 
 =head1 SYNOPSIS
 
@@ -204,58 +197,5 @@ create a new option thingie
 =head2 add_opt
 
 add an option to handle
-
-=head1 AUTHOR
-
-Steve Scaffidi, C<< <sscaffidi at cpan.org> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to 
-C<bug-getopt-nearly-everything at rt.cpan.org>, or through the web interface 
-at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Getopt-Nearly-Everything>.
-I will be notified, and then you'll automatically be notified of progress on 
-your bug as I make changes.
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Getopt::Nearly::Everything
-
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Getopt-Nearly-Everything>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Getopt-Nearly-Everything>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Getopt-Nearly-Everything>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Getopt-Nearly-Everything/>
-
-=back
-
-
-=head1 ACKNOWLEDGEMENTS
-
-
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2009 Steve Scaffidi, all rights reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
 
 
