@@ -52,7 +52,7 @@ sub _process_params {
     # and merge into the passed params.
     if ( exists $params{spec} ) {
         my %more_params = 
-            Getopt::Nearly::Everything::SpecParser->new( $params{spec} );
+            Getopt::Nearly::Everything::SpecParser->parse( $params{spec} );
 
         while ( my ($key, $val) = each %more_params ) {
             if (exists $params{$key}) {

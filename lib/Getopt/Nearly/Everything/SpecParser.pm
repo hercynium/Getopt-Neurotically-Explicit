@@ -1,77 +1,51 @@
+use strict;
+use warnings;
 package Getopt::Nearly::Everything::SpecParser;
+# ABSTRACT: Parse a Getopt::Long option specification
 
 use Carp;
 use Data::Dumper;
 our @CARP_NOT = qw( Getopt::Nearly::Everything );
 
 
+# holds the current opt spec, used for error and debugging code...
+my $CUR_OPT_SPEC;
+
+# holds the parameters for the current parse
+my $CUR_OPTS;
+
+
 sub new {
-    my ($class, @param_list) = @_;
+    my ($class, %params) = @_;
 
-    my $self = bless {}, $class;
+    my $self = bless { %params }, $class;
 
-    # if a single param, it's a spec. otherwise,
-    # expect a list of key/val pairs
-    my ($spec) = scalar @param_list == 1 ? @param_list : '';
-    if( ! $spec ) {
-        my %params = @param_list;
-        $spec = $params{spec} && delete $params{spec};
-        $self->{DEBUG} = $params{debug} && delete $params{debug};
-        croak "Unknown parameters to new(): [ " . 
-            join( ", ", keys %params ) . " ]\n"
-                if keys %params;
-    }
-
-    # the user can retrieve the results by calling parsed_params()
-    $self->parse( $spec ) if $spec;
-    
     return $self;
-}
-
-# Process the parameters passed to new() and return a hashref or die
-#   TODO handle all the following possibilities:
-#     new( spec )
-#     new( spec, { param => val ... } )
-#     new( param => val ... )
-#     new( { param => val ... } )
-sub _process_params {
-    my ($self, @param_list) = @_;
-    
-    # if a single param, it's a spec. otherwise,
-    # expect a list of key/val pairs
-    my ($spec) = scalar @param_list == 1 ? @param_list : '';
-    if( ! $spec ) {
-        my %params = @param_list;
-        $spec = $params{spec} && delete $params{spec};
-        $self->{DEBUG} = $params{debug} && delete $params{debug};
-        croak "Unknown parameters to new(): [ " .
-            join( ", ", keys %params ) . " ]\n"
-                if keys %params;
-    }
-    return %params;
 }
 
 
 sub parse {
-    my ($self, $spec) = @_;
+    my ($self, $spec, $params) = @_;
 
-    print "DEBUG: spec: [$spec]\n" if $self->{DEBUG};
+    $CUR_OPT_SPEC = $spec; # temporary global...
+    $CUR_OPTS = { %{$params || {}}, %{ ref($self) ? $self : {} } };
+
+    print "DEBUG: spec: [$spec]\n" if $CUR_OPTS->{debug};
+    print "DEBUG: params: " . Dumper $CUR_OPTS if $CUR_OPTS->{debug};
 
     if ( $spec !~ /^ ([|a-zA-Z_-]+) ([=:!+]?) (.*) /x ) {
         croak "Invalid option specification: [$spec]";
     }
 
-    $name_spec = $1;
-    $opt_type  = $2 ? $2 : '';
-    $arg_spec  = $3 ? $3 : '';
-
-    $self->{opt_spec}  = $spec;
+    my $name_spec = $1;
+    my $opt_type  = $2 ? $2 : '';
+    my $arg_spec  = $3 ? $3 : '';
 
     my %name_params = $self->_process_name_spec( $name_spec );
     my %arg_params  = $self->_process_arg_spec( $opt_type, $arg_spec );
 
     # I feel that this block should be relocated... but WHERE?
-    if ( $arg_params{negatable} ) {
+    if ( $arg_params{negatable} and !$CUR_OPTS->{no_negation} ) {
 
         my @neg_names = $self->_generate_negation_names( 
             $name_params{name}, 
@@ -80,25 +54,17 @@ sub parse {
         push @{ $name_params{aliases} }, @neg_names;
     }
 
+    undef $CUR_OPT_SPEC; # done with global var.
+    undef $CUR_OPTS;     # ditto
+
     my %result = (%name_params, %arg_params);
 
-    $self->{parsed_params} = \%result;
-
-    return $self->parsed_params();
-}
-
-sub parsed_params {
-    my ($self) = @_;
-    
-    return unless exists $self->{parsed_params};
-
-    return wantarray ? %{ $self->{parsed_params} } : $self->{parsed_params};
+    return wantarray ? %result : \%result;
 }
 
 
-
-my $name_spec_qr = qr{
-    ( [a-zA-Z_-]+ )           # option name as $1
+our $NAME_SPEC_QR = qr{
+    ( [a-zA-Z_-]+ )            # option name as $1
     (
       (?: [|] [a-zA-Z?_-]+ )*  # aliases as $2 (split on |)
     )
@@ -110,9 +76,9 @@ my $name_spec_qr = qr{
 #   ! - option is a flag and may be negated (0 or 1)
 #   + - option is a flag starting at 0 and incremented each time specified
 
-my $arg_spec_qr = qr{
+our $ARG_SPEC_QR = qr{
     (?:
-        ( [siof] )   # arg data type as $1
+        ( [siof] )    # arg data type as $1
       | ( \d+ )       # default num value as $2
       | ( [+] )       # increment type as $3
     )
@@ -129,13 +95,12 @@ my $arg_spec_qr = qr{
 }x;
 
 
-
 sub _process_name_spec {
     my ($self, $spec) = @_;
 
-    if ( $spec !~ $name_spec_qr ) {
+    if ( $spec !~ $NAME_SPEC_QR ) {
         croak "Could not parse the name part of the option spec "
-            . "[$self->{opt_spec}]."
+            . "[$CUR_OPT_SPEC]."
     }
 
     my %params;
@@ -147,9 +112,6 @@ sub _process_name_spec {
 }
 
 
-
-
-
 sub _process_opt_type {
     my ($self, $opt_type, $arg_spec) = @_;
 
@@ -158,7 +120,7 @@ sub _process_opt_type {
     # set params and do some checking based on what we now know...
     if ( $opt_type =~ /[+!]|^$/ ) {
         if ( $arg_spec ) {
-            croak "Invalid option spec [$self->{opt_spec}]: option type "
+            croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
                 . "[$opt_type] does not take an argument spec.";
         }
         if ( $opt_type eq '+' ) {
@@ -181,19 +143,17 @@ sub _process_opt_type {
         $params{value_required} = 0; # if option present, no value required
     }
     else {
-        croak "Invalid option spec [$self->{opt_spec}]: option type "
+        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
             . "[$opt_type] is invalid.\n";
     }
 
     if( ! $arg_spec ) {
-        croak "Invalid option spec [$self->{opt_spec}]: option type "
+        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
             . "[$opt_type] requires an argument spec.\n";
     }
 
     return %params;
 }
-
-
 
 
 sub _process_arg_spec {
@@ -205,9 +165,9 @@ sub _process_arg_spec {
     return %params unless $arg_spec;
 
     # parse the arg spec...
-    if ( $arg_spec !~ $arg_spec_qr ) {
+    if ( $arg_spec !~ $ARG_SPEC_QR ) {
         croak "Could not parse the argument part of the option spec "
-            . "[$self->{opt_spec}].\n";
+            . "[$CUR_OPT_SPEC].\n";
     }
     my $data_type    = $1;
     my $default_num  = $2;
@@ -223,7 +183,7 @@ sub _process_arg_spec {
         $params{data_type} = 'incr';
     }
     elsif (! $data_type ) {
-        croak "Invalid option spec [$self->{opt_spec}]: option type "
+        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
             . "[$opt_type] must be followed by a valid data type.\n";
     } else {
         $params{data_type} = $data_type eq 's' ? 'string' 
@@ -249,19 +209,17 @@ sub _process_arg_spec {
     return %params;
 }
 
+
 ### if the spec shows that negation is allowed, 
 ### generate "no* names" for each name and alias.
 sub _generate_negation_names {
     my ($self, @names) = @_;
-
-    my @neg_names;
-    push @neg_names, "no-$_", "no$_" for @names;
+    my @neg_names = map { ("no-$_", "no$_") } @names;
     return @neg_names;
 }
 
 
-
-1; # return true
+1 && q{there's nothing like re-inventing the wheel!}; # truth
 __END__
 
 
@@ -289,8 +247,7 @@ Perhaps a little code snippet.
     # OR...
     
     my %spec_info = 
-        Getopt::Nearly::Everything::SpecParser->new( 'foo|f=s@{1,5}' )
-            ->parsed_params();
+        Getopt::Nearly::Everything::SpecParser->parse( 'foo|f=s@{1,5}' );
 
 %spec_info should be a hash containing info about the parsed Getopt::Long 
 option specification
@@ -299,14 +256,11 @@ option specification
 
 =head2 new
 
-construct a new parser, parse the spec passed in, if any
+construct a new parser.
 
     my $parser = Getopt::Nearly::Everything::SpecParser->new();
     # OR...
-    my $parser = Getopt::Nearly::Everything::SpecParser->new( 'foo' );
-    # OR...
     my $parser = Getopt::Nearly::Everything::SpecParser->new( 
-        spec  => 'foo',
         debug => 1,
     );
 
@@ -318,24 +272,15 @@ parse an option specification
     # OR...
     my $spec_info = $parser->parse( 'foo' );
 
-=head2 parsed_params
-
 return the info parsed from the spec as a hash, or hashref, 
 depending on context.
 
-    my %spec_info = $parser->parsed_params();
-    # OR...
-    my $spec_info = $parser->parsed_params();
-
 In scalar context, returns a hashref, in list context, returns a hash.
-
-If parse() has not yet been called, and/or a spec was not passed to new(), 
-then this will simply return false ( undef or () )
 
 
 =head1 NOTES on PARSING Getopt::Long OPTION SPECIFICATIONS
 
-=head2 Described as a grammar
+Described as a grammar:
 
   opt_spec  ::=  name_spec arg_spec
 
@@ -355,95 +300,3 @@ then this will simply return false ( undef or () )
   max       ::=  /\d+/
 
 
-=head2 As a regexen
-
-  qr{
-      ( \w+ )           # name as $1
-      (
-        (?: [|] \w+ )*  # aliases as $2 (split on |)
-      )
-      ( [=:!+] )        # arg spec type as $3
-    }
-    # = -> value required
-    # : -> value optional (defaults to '' or 0)
-    # ! -> option is a flag and may be negated (0 or 1)
-    # + -> option is a flag starting at 0 and incremented each time specified
-  qr{
-      (?: 
-          ( [siof] )   # arg data type as $1
-        | ( \d+ )      # ??? as $2
-        | ( [+] )      # allow multiple-use as $3
-      ) 
-      ( [@%] )?        # destination data type as $4
-      (?: 
-          [{] 
-          (\d+)?       # min repetitions as $5
-          (?: 
-              [,] 
-              (\d+)?   # max repetitions as $6
-          )? 
-          [}] 
-      )?
-    }
-
-
-=head1 AUTHOR
-
-Steve Scaffidi, C<< <sscaffidi at cpan.org> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to 
-C<bug-getopt-nearly-everything at rt.cpan.org>, or through the web interface 
-at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Getopt-Nearly-Everything>.
-I will be notified, and then you'll automatically be notified of progress on 
-your bug as I make changes.
-
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc Getopt::Nearly::Everything::SpecParser
-
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Getopt-Nearly-Everything>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Getopt-Nearly-Everything>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Getopt-Nearly-Everything>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Getopt-Nearly-Everything/>
-
-=back
-
-=head1 SEE ALSO
-
-=over 4
-
-=item * Getopt::Long - info on option specifications
-
-=item * Getopt::Nearly::Everything - the module for which this module was created
-
-=back
-
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2009 Steve Scaffidi, all rights reserved.
-
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
-
-=cut

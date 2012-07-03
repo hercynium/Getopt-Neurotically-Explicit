@@ -50,7 +50,7 @@ for my $spec ( @GOOD_SPECS, @BAD_SPECS ) {
     my $valid_test_descr   = "valid spec parses: [$spec]";
     my $invalid_test_descr = "invalid spec causes die(): [$spec]";
     defined $name
-        ? lives_ok( sub { $CLASS->new( $spec ) }, $valid_test_descr )
-        : dies_ok( sub { $CLASS->new( $spec ) }, $invalid_test_descr );
+        ? lives_ok( sub { $CLASS->parse( $spec ) }, $valid_test_descr )
+        : dies_ok( sub { $CLASS->parse( $spec ) }, $invalid_test_descr );
 }
 

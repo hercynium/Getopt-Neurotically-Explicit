@@ -67,8 +67,8 @@ for my $spec ( @GOOD_SPECS, @BAD_SPECS ) {
     my $valid_test_descr   = "valid spec parses: [$spec]";
     my $invalid_test_descr = "invalid spec causes die(): [$spec]";
     defined $opt_name
-        ? lives_ok( sub { $CLASS->new( $spec ) }, $valid_test_descr )
-        : dies_ok( sub { $CLASS->new( $spec ) }, $invalid_test_descr );
+        ? lives_ok( sub { $CLASS->parse( $spec ) }, $valid_test_descr )
+        : dies_ok( sub { $CLASS->parse( $spec ) }, $invalid_test_descr );
 
     SKIP: {
         skip( "additional compliance tests not needed on invalid spec", 2 )
@@ -78,7 +78,7 @@ for my $spec ( @GOOD_SPECS, @BAD_SPECS ) {
         ### semantically matches Getopt::Long
         ### like aliases et al...
 
-        my %gone_data = $CLASS->new( $spec )->parsed_params();
+        my %gone_data = $CLASS->parse( $spec );
 
         check_name_compliance( \%gone_data, \%opctl, $opt_name );
         check_value_type_compliance( \%gone_data, \%opctl );
