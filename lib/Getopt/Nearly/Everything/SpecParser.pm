@@ -1,8 +1,6 @@
-use strict;
-use warnings;
 package Getopt::Nearly::Everything::SpecParser;
 # ABSTRACT: Parse a Getopt::Long option specification
-
+use Moo;
 use Carp;
 use Data::Dumper;
 our @CARP_NOT = qw( Getopt::Nearly::Everything );
@@ -15,13 +13,7 @@ my $CUR_OPT_SPEC;
 my $CUR_OPTS;
 
 
-sub new {
-    my ($class, %params) = @_;
-
-    my $self = bless { %params }, $class;
-
-    return $self;
-}
+has debug => (is => 'rw');
 
 
 sub parse {
@@ -63,25 +55,6 @@ sub parse {
     return wantarray ? %result : \%result;
 }
 
-### if the spec shows that negation is allowed, 
-### generate "no* names" for each name and alias.
-sub _generate_negation_names {
-    my ($self, @names) = @_;
-    my @neg_names = map { ("no-$_", "no$_") } grep { length } @names;
-    return @neg_names;
-}
-
-# Fills in various parameters from the ones already known
-sub _fill_params {
-    my ($self, %params) = @_;
-
-    # TODO fill in stuff
-    $params{opt_type} ||= 'flag';
-
-
-    return %params;
-}
-
 
 our $NAME_SPEC_QR = qr{
     ( [a-zA-Z_-]+ )            # option name as $1
@@ -89,31 +62,6 @@ our $NAME_SPEC_QR = qr{
       (?: [|] [a-zA-Z?_-]+ )*  # aliases as $2 (split on |)
     )
 }x;
-
-# About the optiontype...
-#   = - option requires an argument
-#   : - option argument optional (defaults to '' or 0)
-#   ! - option is a flag and may be negated (0 or 1)
-#   + - option is a flag starting at 0 and incremented each time specified
-
-our $ARG_SPEC_QR = qr{
-    (?:
-        ( [siof] )    # arg data type as $1
-      | ( \d+ )       # default num value as $2
-      | ( [+] )       # increment type as $3
-    )
-    ( [@%] )?         # destination data type as $4
-    (?:
-        [{]
-        (\d+)?        # min repetitions as $5
-        (?:
-            [,]
-            (\d*)? # max repetitions as $6
-        )?
-        [}]
-    )?
-}x;
-
 
 sub _process_name_spec {
     my ($self, $spec) = @_;
@@ -138,49 +86,23 @@ sub _process_name_spec {
 }
 
 
-sub _process_opt_type {
-    my ($self, $opt_type, $arg_spec) = @_;
-
-    my %params;
-
-    # set params and do some checking based on what we now know...
-    if ( $opt_type =~ /[+!]|^$/ ) {
-        if ( $arg_spec ) {
-            croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
-                . "[$opt_type] does not take an argument spec.";
-        }
-        if ( $opt_type eq '+' ) {
-           $params{opt_type} = 'incr'; # incrementing number
-        }
-        if ( $opt_type eq '!' ) {
-            $params{opt_type} = 'flag'; # boolean, 
-            $params{negatable} = 1; # allow no- for negation
-        }
-        if ( $opt_type eq '' ) {
-            $params{opt_type} = 'flag'; # boolean
-        }
-        return %params;
-    }
-
-    if ( $opt_type eq '=' ) {
-        $params{value_required} = 1; # if option present, value required
-    }
-    elsif ( $opt_type eq ':' ) {
-        $params{value_required} = 0; # if option present, no value required
-    }
-    else {
-        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
-            . "[$opt_type] is invalid.\n";
-    }
-
-    if( ! $arg_spec ) {
-        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
-            . "[$opt_type] requires an argument spec.\n";
-    }
-
-    return %params;
-}
-
+our $ARG_SPEC_QR = qr{
+    (?:
+        ( [siof] )    # arg data type as $1
+      | ( \d+ )       # default num value as $2
+      | ( [+] )       # increment type as $3
+    )
+    ( [@%] )?         # destination data type as $4
+    (?:
+        [{]
+        (\d+)?        # min repetitions as $5
+        (?:
+            [,]
+            (\d*)? # max repetitions as $6
+        )?
+        [}]
+    )?
+}x;
 
 sub _process_arg_spec {
     my ($self, $opt_type, $arg_spec ) = @_;
@@ -227,8 +149,8 @@ sub _process_arg_spec {
 
     $params{value_type} ||= '';
     $params{multi_type} ||= '';
-    $params{dest_type} ||= '';
-    $params{opt_type} ||= '';
+    $params{dest_type}  ||= '';
+    $params{opt_type}   ||= '';
     $params{multi} = 1 if $params{dest_type} eq 'hash'
                        || $params{dest_type} eq 'array'
                        || $params{min_rep} > 1 
@@ -237,6 +159,75 @@ sub _process_arg_spec {
 
     delete $params{min_rep} if $params{min_rep} < 0;
     delete $params{max_rep} if !defined $params{max_rep};
+
+    return %params;
+}
+
+
+# About the optiontype...
+#   = - option requires an argument
+#   : - option argument optional (defaults to '' or 0)
+#   ! - option is a flag and may be negated (0 or 1)
+#   + - option is a flag starting at 0 and incremented each time specified
+sub _process_opt_type {
+    my ($self, $opt_type, $arg_spec) = @_;
+
+    my %params;
+
+    # set params and do some checking based on what we now know...
+    if ( $opt_type =~ /[+!]|^$/ ) {
+        if ( $arg_spec ) {
+            croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
+                . "[$opt_type] does not take an argument spec.";
+        }
+        if ( $opt_type eq '+' ) {
+           $params{opt_type} = 'incr'; # incrementing number
+        }
+        if ( $opt_type eq '!' ) {
+            $params{opt_type} = 'flag'; # boolean, 
+            $params{negatable} = 1; # allow no- for negation
+        }
+        if ( $opt_type eq '' ) {
+            $params{opt_type} = 'flag'; # boolean
+        }
+        return %params;
+    }
+
+    if ( $opt_type eq '=' ) {
+        $params{value_required} = 1; # if option present, value required
+    }
+    elsif ( $opt_type eq ':' ) {
+        $params{value_required} = 0; # if option present, no value required
+    }
+    else {
+        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
+            . "[$opt_type] is invalid.\n";
+    }
+
+    if( ! $arg_spec ) {
+        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
+            . "[$opt_type] requires an argument spec.\n";
+    }
+
+    return %params;
+}
+
+
+### if the spec shows that negation is allowed, 
+### generate "no* names" for each name and alias.
+sub _generate_negation_names {
+    my ($self, @names) = @_;
+    my @neg_names = map { ("no-$_", "no$_") } grep { length } @names;
+    return @neg_names;
+}
+
+# Fills in various parameters from the ones already known
+sub _fill_params {
+    my ($self, %params) = @_;
+
+    # TODO fill in stuff
+    $params{opt_type} ||= 'flag';
+
 
     return %params;
 }
@@ -312,5 +303,4 @@ Described as a grammar:
   repeat    ::=  "{" (min)? ("," (/\d+/)?)? "}"
   min       ::=  /\d+/
   max       ::=  /\d+/
-
 
