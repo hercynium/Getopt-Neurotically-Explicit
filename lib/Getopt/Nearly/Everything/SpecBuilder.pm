@@ -12,12 +12,12 @@ our %DATA_TYPE_MAP = (
     integer => 'i',
     string  => 's',
     float   => 'f',
-    file    => 's',
+    extint  => 'o',
 );
 
 our %DEST_TYPE_MAP = (
-    array => '@',
-    hash  => '%',
+    'array'  => '@',
+    'hash'   => '%',
     'scalar' => '',
 );
 
@@ -70,30 +70,36 @@ sub _spec_type {
     my ($self, $params_hash) = @_;
 
     # note: keep in mind - order is important here!
-    # yes, I know, this could be written with ternary ?:
     return '=' if $params_hash->{value_required};
-    return '!' if $params_hash->{negations};
-    return ':' if ! defined $params_hash->{opt_type};
+    return '!' if $params_hash->{negatable};
+    return ':' if $params_hash->{opt_type} eq 'simple';
+    return ':' if $params_hash->{opt_type} =~ '^incr' 
+    	       and defined $params_hash->{val_type} 
+    	       and $params_hash->{val_type} eq 'integer';
     return '+' if $params_hash->{opt_type} =~ '^incr';
     return ''  if $params_hash->{opt_type} eq 'flag';
-    return ':';
+    
+    die "Could not determine option type from spec!\n"
 }
 
 
 sub _build_arg_spec {
     my ($self, $params_hash) = @_;
 
-    my $data_type = $DATA_TYPE_MAP{ $params_hash->{value_type} || 'integer' } or
+    my $data_type = $DATA_TYPE_MAP{ $params_hash->{val_type} || 'integer' } or
         croak "invalid value type [$params_hash->{value_type}]\n"
             . "  valid types: ['" 
             . join( "', '", keys %DATA_TYPE_MAP ) 
             . "']\n";
 
+   $data_type = $params_hash->{default} if $params_hash->{default} and $data_type eq 'i';
+   $data_type = '+' if $params_hash->{opt_type} =~ /^incr/ and $data_type eq 'i';
+
     # empty or missing destination type is allowable, so this accounts for that.
     my $passed_dest_type = ! defined $params_hash->{dest_type} ? 
         '' : $params_hash->{dest_type};
 
-    # This seems really ugly to me, but my brain's fried and it works
+    # This is really ugly, but my brain's fried and it works
     my $dest_type = 
         $passed_dest_type eq '' ? '' :
         exists $DEST_TYPE_MAP{ $passed_dest_type } ? 
@@ -103,17 +109,12 @@ sub _build_arg_spec {
             . join( "', '", keys %DEST_TYPE_MAP ) 
             . "']\n";
 
-    # Repetition values are optional, and must be a positive integer...
-    # 0 is valid for min, and max must be > min...
-    # perhaps that should be validated elsewhere...
-    # maybe yet another package.
-
     my $repeat = '';
-    if ( defined $params_hash->{min_rep} || defined $params_hash->{max_rep} ) {
+    if ( defined $params_hash->{min_vals} || defined $params_hash->{max_vals} ) {
         $repeat .= '{';
-        $repeat .= $params_hash->{min_rep} if defined $params_hash->{min_rep};
-        $repeat .= "," . (defined $params_hash->{max_rep} ? $params_hash->{max_rep} : '')
-            if exists $params_hash->{max_rep};
+        $repeat .= $params_hash->{min_vals} if defined $params_hash->{min_vals};
+        $repeat .= "," . (defined $params_hash->{max_vals} ? $params_hash->{max_vals} : '')
+            if exists $params_hash->{max_vals};
         $repeat .= '}';
     }
 

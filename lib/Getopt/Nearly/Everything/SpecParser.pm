@@ -88,17 +88,17 @@ sub _process_name_spec {
 
 our $ARG_SPEC_QR = qr{
     (?:
-        ( [siof] )    # arg data type as $1
-      | ( \d+ )       # default num value as $2
+        ( [siof] )    # value_type as $1
+      | ( \d+ )       # default_value_int as $2
       | ( [+] )       # increment type as $3
     )
     ( [@%] )?         # destination data type as $4
     (?:
         [{]
-        (\d+)?        # min repetitions as $5
+        (\d+)?        # min_vals as $5
         (?:
             [,]
-            (\d*)? # max repetitions as $6
+            (\d*)?    # max_vals as $6
         )?
         [}]
     )?
@@ -117,48 +117,44 @@ sub _process_arg_spec {
         croak "Could not parse the argument part of the option spec "
             . "[$CUR_OPT_SPEC].\n";
     }
-    my $value_type    = $1;
-    my $default_num  = $2;
-    my $incr_type    = $3;
-    my $dest_type    = $4 ? $4 : '';
-    $params{min_rep} = $5 ? $5 : -1;
-    $params{max_rep} = $6;
+    my $val_type      = $1;
+    my $default_num   = $2; # this implies val type of i with a default value
+    my $incr_type     = $3; # this implies val type i and opt type incremental
+    my $dest_type     = $4;
+    $params{min_vals} = $5 if defined $5;
+    $params{max_vals} = $6 if defined $6;
 
-    if ( $opt_type eq ':' && defined $default_num ) {
+    if ( $opt_type eq ':' and defined $default_num ) {
+        $params{val_type} = 'integer';
+        $params{opt_type} = 'simple';
         $params{default} = $default_num;
     }
-    elsif ( $opt_type eq ':' && defined $incr_type ) {
+    elsif ( $opt_type eq ':' and defined $incr_type ) {
+        $params{val_type} = 'integer';
         $params{opt_type} = 'incr';
     }
-    elsif (! $value_type ) {
+    elsif (! $val_type ) {
         croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
             . "[$opt_type] must be followed by a valid data type.\n";
     } else {
-        $params{value_type} = $value_type eq 's' ? 'string' 
-                            : $value_type eq 'i' ? 'integer'
-                            : $value_type eq 'o' ? 'extint'
-                            : $value_type eq 'f' ? 'real'
-                            : die "This should never happen. Ever.";
-        $params{opt_type} = 'value';
+        $params{val_type} = $val_type eq 's' ? 'string' 
+                          : $val_type eq 'i' ? 'integer'
+                          : $val_type eq 'o' ? 'extint'
+                          : $val_type eq 'f' ? 'real'
+                          : die "This should never happen. Ever.";
+        $params{opt_type} = 'simple';
     }
 
-    $params{dest_type} = 'hash'  if $dest_type eq '%';
-    $params{dest_type} = 'array' if $dest_type eq '@';    
+    $params{dest_type} = !defined $dest_type ? 'scalar'
+                       : $dest_type eq '%'   ? 'hash'
+                       : $dest_type eq '@'   ? 'array'
+                       : croak "Invalid destination type [$dest_type]\n";    
 
-    $params{default} = $default_num if $default_num; 
-
-    $params{value_type} ||= '';
-    $params{multi_type} ||= '';
-    $params{dest_type}  ||= '';
-    $params{opt_type}   ||= '';
     $params{multi} = 1 if $params{dest_type} eq 'hash'
-                       || $params{dest_type} eq 'array'
-                       || $params{min_rep} > 1 
-                       || (defined $params{max_rep} and $params{max_rep} > 1) 
-                       || $params{opt_type} eq 'incr';
+                       or $params{dest_type} eq 'array'
+                       or $params{opt_type}  eq 'incr';
 
-    delete $params{min_rep} if $params{min_rep} < 0;
-    delete $params{max_rep} if !defined $params{max_rep};
+#print Dumper \%params, $opt_type, $val_type, $default_num, $incr_type, $dest_type; exit;
 
     return %params;
 }
@@ -287,20 +283,20 @@ In scalar context, returns a hashref, in list context, returns a hash.
 
 Described as a grammar:
 
-  opt_spec  ::=  name_spec arg_spec
+  opt_spec  ::=  name_spec (arg_spec)?  # if no arg_spec, option is a flag.
 
   name_spec ::=  opt_name ("|" opt_alias)*
   opt_alias ::=  /\w+/
   opt_name  ::=  /\w+/
 
-  arg_spec ::= "="  arg_type                (dest_type)? (repeat)?
-             | ":" (arg_type | /\d+/ | "+") (dest_type)? # is repeat legal here?
-             | "!"
-             | "+"
+  arg_spec  ::= "="  val_type                (dest_type)? (repeat)?  # simple required
+              | ":" (val_type | /\d+/ | "+") (dest_type)?            # simple optional
+              | "!"                                                  # flag negatable
+              | "+"                                                  # flag incremental
 
-  arg_type  ::=  "s" | "i" | "o" | "f"
-  dest_type ::=  "@" | "%"
-  repeat    ::=  "{" (min)? ("," (/\d+/)?)? "}"
-  min       ::=  /\d+/
-  max       ::=  /\d+/
+  arg_type  ::=  "s" | "i" | "o" | "f"              # string, integer, extint, float
+  dest_type ::=  "@" | "%"                          # array or hash
+  repeat    ::=  "{" (min_val)? ("," max_val)? "}"  # multiple-values per use
+  min_vals  ::=  /\d+/
+  max_vals  ::=  /\d*/
 
