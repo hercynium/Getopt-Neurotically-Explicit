@@ -51,15 +51,12 @@ sub build {
 sub _build_name_spec {
     my ($self, $params_hash) = @_;
 
-    croak "missing required option parameter [name]\n" 
-        unless $params_hash->{name};
-
     $params_hash->{aliases} ||= [] unless exists $params_hash->{aliases};
     croak "option parameter [aliases] must be an array ref\n"
         unless ref $params_hash->{aliases} eq 'ARRAY';
 
     my $name_spec = join( '|', grep { defined $_ and length $_ } 
-        $params_hash->{name}, $params_hash->{short},
+        $params_hash->{long}, $params_hash->{short},
         @{ $params_hash->{aliases}  } );
 
     return $name_spec;
@@ -67,17 +64,18 @@ sub _build_name_spec {
 
 
 sub _spec_type {
-    my ($self, $params_hash) = @_;
+    my ($self, $params) = @_;
 
     # note: keep in mind - order is important here!
-    return '=' if $params_hash->{value_required};
-    return '!' if $params_hash->{negatable};
-    return ':' if $params_hash->{opt_type} eq 'simple';
-    return ':' if $params_hash->{opt_type} =~ '^incr' 
-    	       and defined $params_hash->{val_type} 
-    	       and $params_hash->{val_type} eq 'integer';
-    return '+' if $params_hash->{opt_type} =~ '^incr';
-    return ''  if $params_hash->{opt_type} eq 'flag';
+    return '=' if $params->{value_required};
+    return '!' if $params->{negatable};
+    return ':' if $params->{opt_type} eq 'simple';
+    return ':' if $params->{opt_type} =~ '^incr' 
+    	          and defined $params->{val_type} 
+    	          and $params->{val_type} eq 'integer'
+                  and exists $params->{value_required};
+    return '+' if $params->{opt_type} =~ '^incr';
+    return ''  if $params->{opt_type} eq 'flag';
     
     die "Could not determine option type from spec!\n"
 }

@@ -36,7 +36,7 @@ sub parse {
     my %name_params = $self->_process_name_spec( $name_spec );
     my %arg_params  = $self->_process_arg_spec( $opt_type, $arg_spec );
 
-    # I feel that this block should be relocated... but WHERE?
+    ### I feel that this block should be relocated... but WHERE?
     if ( $arg_params{negatable} ) {
 
         my @neg_names = $self->_generate_negation_names( 

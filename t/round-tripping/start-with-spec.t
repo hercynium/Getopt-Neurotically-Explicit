@@ -13,9 +13,6 @@ BEGIN {
   use_ok($PARSER_CLASS);
 }
 
-my $bo = new_ok($BUILDER_CLASS);
-my $po = new_ok($PARSER_CLASS);
-
 my @TEST_SPECS = (
     'foo|f!',
     'foo|f+',
@@ -36,6 +33,9 @@ my @TEST_SPECS = (
     'bar|b=s%'
 );
 
+
+my $bo = new_ok($BUILDER_CLASS);
+my $po = new_ok($PARSER_CLASS);
 
 for my $orig_spec ( @TEST_SPECS ) {
     my $params = $po->parse( $orig_spec );

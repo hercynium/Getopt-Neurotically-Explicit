@@ -24,7 +24,7 @@ sub add_opt {
     my ($self, %params) = @_;
 
     my %opt_params = $self->_process_params( %params );
-
+    
     my $opt = Getopt::Nearly::Everything::Option->new(%opt_params);
 
     $self->{opts}{$opt->name} = $opt;
@@ -43,6 +43,7 @@ sub _process_params {
             Getopt::Nearly::Everything::SpecParser->parse( $params{spec} );
 
         while ( my ($key, $val) = each %more_params ) {
+            next if $key eq 'name';
             if (exists $params{$key}) {
                 croak "The parameter [$key] was both passed to add_opt() and parsed "
                     . "from the spec [$params{spec}]. Please change one or the other.";

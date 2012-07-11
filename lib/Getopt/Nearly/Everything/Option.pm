@@ -52,7 +52,7 @@ sub BUILDARGS {
             'scalar';
     }
 
-    $args{value_type} ||= 'integer' if ($args{opt_type} and $args{opt_type} =~ '^incr');
+    $args{val_type} ||= 'integer' if ($args{opt_type} and $args{opt_type} =~ '^incr');
 
     if ( !defined $args{multi} ) {
         $args{multi} =
@@ -177,19 +177,21 @@ has multi => (
     },
 );
 
-has min_rep => (
+has min_vals => (
     is => 'ro',
-    isa => Int,
     documentation => q{
-        If multi is set, the minimum allowed repitions of this option on the command line.
+        Some options can consume multiple values. This is the minimum number of
+        values to consume. Must be an integer greater than 0 or undefined.
     }
 );
 
-has max_rep => (
+has max_vals => (
     is => 'ro',
-    isa => Int,
+    #isa => Int,
     documentation => q{
-        If multi is set, the maximum allowed repitions of this option on the command line.
+        Some options can consume multiple values. This is the maximum number of
+        values to consume. Must be an integer greater than 0 or undefined. If
+        an integer, must be greater than min_vals.
     }
 );
 
@@ -248,6 +250,14 @@ has group => (
 
 ### Only flag options are negatable with GoL, so these only pertain to flags.
 
+has negatable => (
+    is => 'ro',
+    isa => Bool,
+    documentation => q{
+        If this option is negatable with forms like --no-foo, this should be true.
+    },
+);
+
 has negations => (
     is => 'ro',
     isa => ArrayRef[Str],
@@ -283,7 +293,7 @@ has short_negations => (
 ### attributes that only pertain to value options
 
 
-has value_type => (
+has val_type => (
     is => 'ro',
     isa => Str,
     documentation => q{
