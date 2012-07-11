@@ -9,40 +9,25 @@ use Data::Dumper;
 use Getopt::Nearly::Everything::SpecBuilder;
 
 
-# set & validate various args based on the values of others before actually
-# invoking the constructor.
+# Before invoking the constructor, figure out what kind of
+# option this is, importing whever roles fit the arguments.
+# Also set various attributes based on the arguments.
 sub BUILDARGS {
     my ($class, @args) = @_;
-
     my %args = _HASHLIKE($args[0]) ? %{$args[0]} : @args;
 
     if ( !defined $args{name} ) {
-        $args{name} = ($args{long} or croak "Can't set name if long is missing!\n");
+        $args{name} = ($args{long}
+          or croak "Can't set name if long is missing!\n");
     }
-
-
-    if ($args{opt_type} and $args{opt_type} eq 'flag') {
-
-        # build/add-to negations if the user asked
-        $args{negations} = [
-            uniq
-            @{ $args{negations} || [] },
-            map  { ("no$_", "no-$_") }
-            grep { $args{short_negations} ? 1 : defined $_ and length $_ > 1 }
-                $args{long},
-                @{ $args{aliases}   || [] }
-        ] if $args{auto_negations};
-    }
-    else {
-        # certain args/attrs only apply to flags
-        delete @args{qw(negations short_negations auto_negations)};
-    }
-
 
     if ( !defined $args{default} ) {
         $args{default} =
             _SCALAR0($args{destination}) ? ${$args{destination}} : $args{destination};
     }
+    
+    $args{val_type} = 'integer'
+      if ($args{opt_type} and $args{opt_type} =~ '^incr');
 
     if ( !defined $args{dest_type} ) {
         $args{dest_type} =
@@ -52,18 +37,41 @@ sub BUILDARGS {
             'scalar';
     }
 
-    $args{val_type} ||= 'integer' if ($args{opt_type} and $args{opt_type} =~ '^incr');
+    with 'Getopt::Nearly::Everything::Option::MultiUseRole'
+      if ($args{opt_type} and $args{opt_type} =~ '^incr')
+      or $args{dest_type} =~ /array|hash/
+      or ($args{max_use} and $args{max_use} > 1);
 
-    if ( !defined $args{multi} ) {
-        $args{multi} =
-            ($args{opt_type} and $args{opt_type} =~ '^incr') ? 1 :
-            $args{dest_type} eq 'array' ? 1 :
-            $args{dest_type} eq 'hash'  ? 1 :
-            ($args{max_rep} and $args{max_rep} > 1) ? 1 :
-            0;
+    with 'Getopt::Nearly::Everything::Option::MultiValRangeRole'
+      if exists $args{min_vals} or exists $args{max_vals};
+
+    with 'Getopt::Nearly::Everything::Option::MultiValFixedRole'
+      if exists $args{vals};
+
+    if ( $args{negatable} ) {
+      croak "negatable only makes sense for opt_type = flag\n"
+        unless $args{opt_type} eq 'flag';
+      with 'Getopt::Nearly::Everything::Option::NegatableRole';
     }
 
     return \%args;
+}
+
+# Doing this because something seems to be broken in Moo???
+# TODO: investiagate... I may be Doing It Wrong (tm)
+sub BUILD {
+  my ($self, $args) = @_;
+  # so icky, but my role attributes aren't getting populated without this :(
+  @{$self}{$_} = $args->{$_} for keys %$args;
+}
+
+sub spec {
+  my ($self) = @_;
+  # this is where I want a real MOP, but not bad enough yet, evidently.
+  # still, it would be nice to be able to convert all object attributes
+  # to a hash reliably and including all roles...
+  my %params = %$self;
+  return Getopt::Nearly::Everything::SpecBuilder->build(%params);
 }
 
 
@@ -75,7 +83,7 @@ has opt_type => (
     required => 1,
     documentation => q{
         The "type" of this option itself. Put simply, must be one of
-        'flag', 'incremental', or 'value', which correspond to the
+        'flag', 'incremental', or 'simple', which correspond to the
         various ways an option can be interpreted due to the contents
         of a Getopt::Long spec.
 
@@ -84,7 +92,7 @@ has opt_type => (
         Incremental options have an integer value that begins at 0 and
         is incremented each time the option is used.
 
-        Value options have a value that is specified in various ways
+        Simple options have a value that is specified in various ways
         and can be stored as either a scalar, a hash, or an array, but
         on the command line can only be entered as numbers or strings.
     },
@@ -134,11 +142,11 @@ has dest_type => (
     is => 'ro',
     isa => Str,
     documentation => q{
-        When multi is true, this is the data type in which the values will be stored.
+        This is the data type in which the values will be stored.
         It will be one of 'scalar', 'hash', or 'array'.
 
-        Note that 'flag' and 'incremental' options can only use 'scalar'. If you try to\
-        use something else things will... happen...
+        Note that 'flag' and 'incremental' options can only use 'scalar'. If you
+        try to use something else things might... happen...
     },
 );
 
@@ -157,8 +165,8 @@ has destination => (
     is => 'ro',
     documentation => q{
         A reference to a variable in which this option's value (or values) will be
-        stored. If both this attribute and multi_type are set, their types *must*
-        match. If this is set and multi_type is not set, multi_type will be set to
+        stored. If both this attribute and dest_type are set, their types *must*
+        match. If this is set and dest_type is not set, dest_type will be set to
         the correct value based on the ref passed to this.
 
         Any value(s) in the referenced variable will be used as the default value
@@ -167,33 +175,8 @@ has destination => (
     },
 );
 
-has multi => (
-    is => 'ro',
-    isa => Bool,
-    documentation => q{
-        Indicates whether or not this option can be used multiple times
-        on the command-line. If so, the values will be collected in an
-        array (by default) or hash.
-    },
-);
 
-has min_vals => (
-    is => 'ro',
-    documentation => q{
-        Some options can consume multiple values. This is the minimum number of
-        values to consume. Must be an integer greater than 0 or undefined.
-    }
-);
 
-has max_vals => (
-    is => 'ro',
-    #isa => Int,
-    documentation => q{
-        Some options can consume multiple values. This is the maximum number of
-        values to consume. Must be an integer greater than 0 or undefined. If
-        an integer, must be greater than min_vals.
-    }
-);
 
 has depends => (
     is => 'ro',
@@ -248,50 +231,7 @@ has group => (
 );
 
 
-### Only flag options are negatable with GoL, so these only pertain to flags.
-
-has negatable => (
-    is => 'ro',
-    isa => Bool,
-    documentation => q{
-        If this option is negatable with forms like --no-foo, this should be true.
-    },
-);
-
-has negations => (
-    is => 'ro',
-    isa => ArrayRef[Str],
-    documentation => q{
-        Options which, when present, negate this option.
-        Only makes sense for flag options. Same thing as usual about valid characters.
-        for exmaple, the option --connect might have a negation of --no-connect
-    },
-);
-
-has auto_negations => (
-    is => 'ro',
-    isa => Bool,
-    documentation => q{
-        When constructing this object, negations can be generated from the long
-        and alias values. By default, one-char option names do not get negations.
-        Generated negations will be added to any negations supplied by the user.
-    },
-);
-
-has short_negations => (
-    is => 'ro',
-    isa => Bool,
-    documentation => q{
-        When constructing this object, negations can be generated from the long
-        and alias values. By default, one-char option names do not get negations.
-        Setting this to true changes that so foo|f will get nofoo and nof negations.
-    },
-);
-
-
-
-### attributes that only pertain to value options
-
+### attributes that only pertain to simple/value options
 
 has val_type => (
     is => 'ro',
@@ -304,7 +244,6 @@ has val_type => (
     },
 );
 
-
 has value_required => (
     is => 'ro',
     isa => Bool,
@@ -313,11 +252,4 @@ has value_required => (
     },
 );
 
-sub spec {
-  my ($self) = @_;
-  # this is where I want a MOP, but not bad enough yet, evidently.
-  my %params = %$self;
-  return Getopt::Nearly::Everything::SpecBuilder->build(%params);
-}
-
-1 && q{Moo, motherfuckers!}; #truth
+1 && q{Moo, motherfuckers!}; # truth
