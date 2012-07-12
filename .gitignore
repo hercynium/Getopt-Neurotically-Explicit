@@ -32,3 +32,4 @@ blib/
 *.new
 *.DS_Store
 *.tdy
+*.bak

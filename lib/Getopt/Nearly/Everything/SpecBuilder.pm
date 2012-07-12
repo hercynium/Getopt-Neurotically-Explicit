@@ -1,10 +1,11 @@
 use strict;
 use warnings;
+
 package Getopt::Nearly::Everything::SpecBuilder;
+
 # ABSTRACT: Build a Getopt::Long option spec from a set of attributes
 use Carp;
 use Data::Dumper;
-
 
 our %DATA_TYPE_MAP = (
     integer => 'i',
@@ -22,51 +23,48 @@ our %DEST_TYPE_MAP = (
     'scalar' => '',
 );
 
-
 sub new {
-    my ($class, %params) = @_;
-    my $self = bless { %params }, $class;
+    my ( $class, %params ) = @_;
+    my $self = bless {%params}, $class;
     return $self;
 }
 
-
 sub build {
-    my ($self, %params) = @_;
-    
+    my ( $self, %params ) = @_;
+
     my $name_spec = $self->_build_name_spec( \%params );
 
     my $spec_type = $self->_spec_type( \%params );
 
     croak "default only valid when spec type is ':'\n"
-      if $params{default_num} and $spec_type ne ':';
+        if $params{default_num} and $spec_type ne ':';
 
-    my $arg_spec = ($spec_type =~ /[:=]/) ? 
-        $self->_build_arg_spec( \%params ) :
-        '';
+    my $arg_spec = ( $spec_type =~ /[:=]/ ) ? $self->_build_arg_spec( \%params ) : '';
 
     my $spec = $name_spec . $spec_type . $arg_spec;
-    
+
     return $spec;
 }
 
-
 sub _build_name_spec {
-    my ($self, $params) = @_;
+    my ( $self, $params ) = @_;
 
     $params->{aliases} ||= [] unless exists $params->{aliases};
     croak "option parameter [aliases] must be an array ref\n"
         unless ref $params->{aliases} eq 'ARRAY';
 
-    my $name_spec = join( '|', grep { defined $_ and length $_ } 
-        $params->{long}, $params->{short},
-        @{ $params->{aliases}  } );
+    my $name_spec = join( '|',
+        grep { defined $_ and length $_ }
+        $params->{long},
+        $params->{short},
+        @{ $params->{aliases} }
+    );
 
     return $name_spec;
 }
 
-
 sub _spec_type {
-    my ($self, $params) = @_;
+    my ( $self, $params ) = @_;
 
     # note: keep in mind - order is important here!
     return ':' if defined $params->{val_required} and $params->{val_required} == 0;
@@ -74,33 +72,32 @@ sub _spec_type {
     return '!' if $params->{negatable};
     return '+' if $params->{opt_type} =~ '^incr';
     return ''  if $params->{opt_type} eq 'flag';
-    
-    die "Could not determine option type from spec!\n"
+
+    die "Could not determine option type from spec!\n";
 }
 
-
 sub _build_arg_spec {
-    my ($self, $params) = @_;
+    my ( $self, $params ) = @_;
 
-    my $val_type = $DATA_TYPE_MAP{ lc($params->{val_type}) || 'int' } or
-        croak "invalid value type [$params->{val_type}]\n";
+    my $val_type = $DATA_TYPE_MAP{ lc( $params->{val_type} ) || 'int' }
+        or croak "invalid value type [$params->{val_type}]\n";
 
-   # special cases for incremental opts or opts with default numeric value
-   $val_type = $params->{default_num} if $params->{default_num};
-   $val_type = '+' if $params->{opt_type} =~ /^incr/ and $val_type eq 'i';
+    # special cases for incremental opts or opts with default numeric value
+    $val_type = $params->{default_num} if $params->{default_num};
+    $val_type = '+' if $params->{opt_type} =~ /^incr/ and $val_type eq 'i';
 
     # empty or missing destination type is allowable, so this accounts for that.
-    my $dest_type = ! $params->{dest_type} ? '' : $DEST_TYPE_MAP{ $params->{dest_type} };
+    my $dest_type = !$params->{dest_type} ? '' : $DEST_TYPE_MAP{ $params->{dest_type} };
     croak "invalid destination type [@{[ $params->{dest_type} || '' ]}]\n"
-      unless defined $dest_type;
-    
+        unless defined $dest_type;
+
     # ah, the little-understood "repeat" clause
     my $repeat = '';
     if ( defined $params->{min_vals} || defined $params->{max_vals} ) {
         croak "repeat spec not valid when using default value\n" if $params->{default_num};
         $repeat .= '{';
         $repeat .= $params->{min_vals} if defined $params->{min_vals};
-        $repeat .= "," . (defined $params->{max_vals} ? $params->{max_vals} : '')
+        $repeat .= "," . ( defined $params->{max_vals} ? $params->{max_vals} : '' )
             if exists $params->{max_vals};
         $repeat .= '}';
     }
@@ -111,8 +108,7 @@ sub _build_arg_spec {
     return $val_type . $dest_type . $repeat;
 }
 
-
-1 && q{this is probably crazier than the last thing I wrote}; # truth
+1 && q{this is probably crazier than the last thing I wrote};  # truth
 __END__
 
 =head1 SYNOPSIS

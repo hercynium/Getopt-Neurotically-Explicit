@@ -1,10 +1,11 @@
 use strict;
 use warnings;
+
 package Getopt::Nearly::Everything::SpecParser;
+
 # ABSTRACT: Parse a Getopt::Long option spec into a set of attributes
 use Carp;
 use Data::Dumper;
-
 
 # holds the current opt spec, used for error and debugging code...
 my $CUR_OPT_SPEC;
@@ -12,54 +13,50 @@ my $CUR_OPT_SPEC;
 # holds the parameters for the current parse
 my $CUR_OPTS;
 
-
 sub new {
-    my ($class, %params) = @_;
-    my $self = bless { %params }, $class;
+    my ( $class, %params ) = @_;
+    my $self = bless {%params}, $class;
     return $self;
 }
 
-
 sub parse {
-    my ($self, $spec, $params) = @_;
+    my ( $self, $spec, $params ) = @_;
 
-    $CUR_OPT_SPEC = $spec; # temporary global...
-    $CUR_OPTS = { %{$params || {} }, %{ ref($self) ? $self : {} } };
+    # temporary globals...
+    $CUR_OPT_SPEC = $spec;
+    $CUR_OPTS = { %{ $params || {} }, %{ ref( $self ) ? $self : {} } };
 
     print "DEBUG: spec: [$spec]\n" if $CUR_OPTS->{debug};
     print "DEBUG: params: " . Dumper $CUR_OPTS if $CUR_OPTS->{debug};
 
-    if ( $spec !~ /^ ([|a-zA-Z_-]+) ([=:!+]?) (.*) /x ) {
-        croak "Invalid option specification: [$spec]";
-    }
+    croak "Invalid option specification: [$spec]"
+        if $spec !~ /^ ([|a-zA-Z_-]+) ([=:!+]?) (.*) /x;
 
     my $name_spec = $1;
     my $opt_type  = $2 ? $2 : '';
     my $arg_spec  = $3 ? $3 : '';
 
     my %name_params = $self->_process_name_spec( $name_spec );
-    my %arg_params  = $self->_process_arg_spec( $opt_type, $arg_spec );
+    my %arg_params = $self->_process_arg_spec( $opt_type, $arg_spec );
 
     ### It is necessary to compute these here for compat. with GoL
     ### I feel that this block should be relocated... but WHERE?
     if ( $arg_params{negatable} ) {
-
-        my @neg_names = $self->_generate_negation_names( 
+        my @neg_names = $self->_generate_negation_names(
             $name_params{long},
             $name_params{short},
-            @{ $name_params{aliases} } 
+            @{ $name_params{aliases} },
         );
         push @{ $name_params{negations} }, @neg_names;
     }
 
-    undef $CUR_OPT_SPEC; # done with global var.
-    undef $CUR_OPTS;     # ditto
+    undef $CUR_OPT_SPEC;  # done with global var.
+    undef $CUR_OPTS;      # ditto
 
-    my %result = (%name_params, %arg_params);
+    my %result = ( %name_params, %arg_params );
 
     return wantarray ? %result : \%result;
 }
-
 
 our $NAME_SPEC_QR = qr{
     ( [a-zA-Z_-]+ )            # option name as $1
@@ -69,26 +66,27 @@ our $NAME_SPEC_QR = qr{
 }x;
 
 sub _process_name_spec {
-    my ($self, $spec) = @_;
+    my ( $self, $spec ) = @_;
 
-    if ( $spec !~ $NAME_SPEC_QR ) {
-        croak "Could not parse the name part of the option spec "
-            . "[$CUR_OPT_SPEC]."
-    }
+    croak "Could not parse the name part of the option spec " . "[$CUR_OPT_SPEC]."
+        if $spec !~ $NAME_SPEC_QR;
 
     my %params;
 
-    $params{long}     = $1;
-    $params{aliases}  = [
+    $params{long}    = $1;
+    $params{aliases} = [
         grep { defined $_ }
-        map  { (length($_) == 1 and !$params{short}) ? ($params{short} = $_ and undef) : $_ }
-        grep { $_ }
-        split( '[|]', $2)
+            map {
+                  ( length( $_ ) == 1 and !$params{short} )
+                ? ( $params{short} = $_ and undef )
+                : $_
+            }
+            grep { $_ }
+            split( '[|]', $2 )
     ];
 
     return %params;
 }
-
 
 our $ARG_SPEC_QR = qr{
     (?:
@@ -109,22 +107,22 @@ our $ARG_SPEC_QR = qr{
 }x;
 
 sub _process_arg_spec {
-    my ($self, $opt_type, $arg_spec ) = @_;
+    my ( $self, $opt_type, $arg_spec ) = @_;
 
     # do some validation and set some params based on the option type
-    my %params = $self->_process_opt_type($opt_type, $arg_spec);
+    my %params = $self->_process_opt_type( $opt_type, $arg_spec );
 
     return %params unless $arg_spec;
 
     # parse the arg spec...
     croak "Could not parse the argument part of the option spec [$CUR_OPT_SPEC]\n"
         if $arg_spec !~ $ARG_SPEC_QR;
-    my $val_type      = $1;               # [siof]
-    my $default_num   = $2;               # \d+
-    my $incr_type     = $3;               # \+
-    my $dest_type     = $4;               # [@%]
-    $params{min_vals} = $5 if defined $5; # \d+
-    $params{max_vals} = $6 if defined $6; # \d+
+    my $val_type      = $1;                # [siof]
+    my $default_num   = $2;                # \d+
+    my $incr_type     = $3;                # \+
+    my $dest_type     = $4;                # [@%]
+    $params{min_vals} = $5 if defined $5;  # \d+
+    $params{max_vals} = $6 if defined $6;  # \d+
 
     croak "can't use an + here unless opt_type is ':'\n"
         if defined $incr_type and $opt_type ne ':';
@@ -142,32 +140,33 @@ sub _process_arg_spec {
         if defined $val_type and $opt_type !~ /[:=]/;
 
     croak "repeat can only be used with a required value\n"
-        if (exists $params{min_vals} or exists $params{max_vals})
-           and $opt_type ne '=';
+        if ( exists $params{min_vals} or exists $params{max_vals} )
+        and $opt_type ne '=';
 
     # one repetition value, no comma...
-    if ( exists $params{min_vals} and ! exists $params{max_vals} ) {
+    if ( exists $params{min_vals} and !exists $params{max_vals} ) {
         $params{num_vals} = delete $params{min_vals};
     }
 
     if ( $val_type ) {
-        $params{val_type} = $val_type eq 's' ? 'string' 
-                          : $val_type eq 'i' ? 'integer'
-                          : $val_type eq 'o' ? 'extint'
-                          : $val_type eq 'f' ? 'real'
-                          : die "This should never happen. Ever.";
+        $params{val_type} =
+              $val_type eq 's' ? 'string'
+            : $val_type eq 'i' ? 'integer'
+            : $val_type eq 'o' ? 'extint'
+            : $val_type eq 'f' ? 'real'
+            : die "This should never happen. Ever.";
         $params{opt_type} = 'simple';
     }
 
     if ( defined $dest_type ) {
-        $params{dest_type} = $dest_type eq '%' ? 'hash'
-                           : $dest_type eq '@' ? 'array'
-                           : croak "Invalid destination type [$dest_type]\n";
+        $params{dest_type} =
+              $dest_type eq '%' ? 'hash'
+            : $dest_type eq '@' ? 'array'
+            : croak "Invalid destination type [$dest_type]\n";
     }
 
     return %params;
 }
-
 
 # About the optiontype...
 #   = - option requires an argument
@@ -176,7 +175,7 @@ sub _process_arg_spec {
 #   + - option is an int starting at 0 and incremented each time specified
 #     - option is a flag to be turned on when used
 sub _process_opt_type {
-    my ($self, $opt_type, $arg_spec) = @_;
+    my ( $self, $opt_type, $arg_spec ) = @_;
 
     my %params;
 
@@ -187,10 +186,10 @@ sub _process_opt_type {
                 . "[$opt_type] does not take an argument spec.";
         }
         if ( $opt_type eq '+' ) {
-           $params{opt_type} = 'incr';
+            $params{opt_type} = 'incr';
         }
         if ( $opt_type eq '!' ) {
-            $params{opt_type} = 'flag';
+            $params{opt_type}  = 'flag';
             $params{negatable} = 1;
         }
         if ( $opt_type eq '' ) {
@@ -208,11 +207,10 @@ sub _process_opt_type {
         $params{val_required} = 0;
     }
     else {
-        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
-            . "[$opt_type] is invalid.\n";
+        croak "Invalid option spec [$CUR_OPT_SPEC]: option type [$opt_type] is invalid.\n";
     }
 
-    if( ! $arg_spec ) {
+    if ( !$arg_spec ) {
         croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
             . "[$opt_type] requires an argument spec.\n";
     }
@@ -220,17 +218,15 @@ sub _process_opt_type {
     return %params;
 }
 
-
-### if the spec shows that negation is allowed, 
+### if the spec shows that negation is allowed,
 ### generate "no* names" for each name and alias.
 sub _generate_negation_names {
-    my ($self, @names) = @_;
-    my @neg_names = map { ("no-$_", "no$_") } grep { length } @names;
+    my ( $self, @names ) = @_;
+    my @neg_names = map { ( "no-$_", "no$_" ) } grep { length } @names;
     return @neg_names;
 }
 
-
-1 && q{there's nothing like re-inventing the wheel!}; # truth
+1 && q{there's nothing like re-inventing the wheel!};  # truth
 __END__
 
 =head1 SYNOPSIS
