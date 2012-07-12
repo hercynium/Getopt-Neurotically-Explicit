@@ -23,9 +23,7 @@ my @TEST_SPECS = (
     'foo|f:+',
     'foo|f:5',
     'foo|f|g|h',
-    'foo|b:s@{1,5}',
     'foo|b=s@{1,}',
-    'foo|b:s@{1}',
     'foo|b=s@{,5}',
     'foo|b=s%'
 );

@@ -196,6 +196,8 @@ sub _process_opt_type {
         return %params;
     }
 
+    $params{opt_type} = 'simple';
+
     if ( $opt_type eq '=' ) {
         $params{val_required} = 1; # if option present, value required
     }
@@ -227,10 +229,6 @@ sub _generate_negation_names {
 # Fills in various parameters from the ones already known
 sub _fill_params {
     my ($self, %params) = @_;
-
-    # TODO fill in stuff
-    $params{opt_type} ||= 'flag';
-
 
     return %params;
 }
