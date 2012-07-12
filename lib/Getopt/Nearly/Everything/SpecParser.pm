@@ -89,8 +89,8 @@ sub _process_name_spec {
 our $ARG_SPEC_QR = qr{
     (?:
         ( [siof] )    # value_type as $1
-      | ( \d+ )       # default_value_int as $2
-      | ( [+] )       # increment type as $3
+      | ( \d+ )       # default_value_int as $2 (not always valid)
+      | ( [+] )       # increment type as $3    (not always valid)
     )
     ( [@%] )?         # destination data type as $4
     (?:

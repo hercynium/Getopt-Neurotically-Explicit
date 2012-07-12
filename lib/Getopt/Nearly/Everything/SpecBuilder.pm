@@ -5,7 +5,7 @@ package Getopt::Nearly::Everything::SpecBuilder;
 
 use Carp;
 use Data::Dumper;
-our @CARP_NOT = qw( Getopt::Nearly::Everything );
+our @CARP_NOT = qw( Getopt::Nearly::Everything Getopt::Nearly::Everything::Option );
 
 
 our %DATA_TYPE_MAP = (
@@ -32,14 +32,17 @@ sub new {
 
 
 sub build {
-    my ($self, %params_hash) = @_;
+    my ($self, %params) = @_;
     
-    my $name_spec = $self->_build_name_spec( \%params_hash );
+    my $name_spec = $self->_build_name_spec( \%params );
 
-    my $spec_type = $self->_spec_type( \%params_hash );
+    my $spec_type = $self->_spec_type( \%params );
+
+    croak "default only valid when spec type is ':'\n"
+      if $params{default_num} and $spec_type ne ':';
 
     my $arg_spec = ($spec_type =~ /[:=]/) ? 
-        $self->_build_arg_spec( \%params_hash ) :
+        $self->_build_arg_spec( \%params ) :
         '';
 
     my $spec = $name_spec . $spec_type . $arg_spec;
@@ -49,15 +52,15 @@ sub build {
 
 
 sub _build_name_spec {
-    my ($self, $params_hash) = @_;
+    my ($self, $params) = @_;
 
-    $params_hash->{aliases} ||= [] unless exists $params_hash->{aliases};
+    $params->{aliases} ||= [] unless exists $params->{aliases};
     croak "option parameter [aliases] must be an array ref\n"
-        unless ref $params_hash->{aliases} eq 'ARRAY';
+        unless ref $params->{aliases} eq 'ARRAY';
 
     my $name_spec = join( '|', grep { defined $_ and length $_ } 
-        $params_hash->{long}, $params_hash->{short},
-        @{ $params_hash->{aliases}  } );
+        $params->{long}, $params->{short},
+        @{ $params->{aliases}  } );
 
     return $name_spec;
 }
@@ -82,41 +85,49 @@ sub _spec_type {
 
 
 sub _build_arg_spec {
-    my ($self, $params_hash) = @_;
+    my ($self, $params) = @_;
 
-    my $data_type = $DATA_TYPE_MAP{ $params_hash->{val_type} || 'integer' } or
-        croak "invalid value type [$params_hash->{value_type}]\n"
+    if ( exists $params->{default_num} ) {
+       print "POOP\n";
+    }
+
+    my $val_type = $DATA_TYPE_MAP{ $params->{val_type} || 'integer' } or
+        croak "invalid value type [$params->{value_type}]\n"
             . "  valid types: ['" 
             . join( "', '", keys %DATA_TYPE_MAP ) 
             . "']\n";
 
-   $data_type = $params_hash->{default} if $params_hash->{default} and $data_type eq 'i';
-   $data_type = '+' if $params_hash->{opt_type} =~ /^incr/ and $data_type eq 'i';
+   # special cases for incremental opts or opts with default numeric value
+   $val_type = $params->{default_num} if $params->{default_num};
+   $val_type = '+' if $params->{opt_type} =~ /^incr/ and $val_type eq 'i';
 
     # empty or missing destination type is allowable, so this accounts for that.
-    my $passed_dest_type = ! defined $params_hash->{dest_type} ? 
-        '' : $params_hash->{dest_type};
+    my $passed_dest_type = ! defined $params->{dest_type} ? 
+        '' : $params->{dest_type};
 
     # This is really ugly, but my brain's fried and it works
     my $dest_type = 
         $passed_dest_type eq '' ? '' :
         exists $DEST_TYPE_MAP{ $passed_dest_type } ? 
-            $DEST_TYPE_MAP{ $params_hash->{dest_type} } :
-        croak "invalid destination type [$params_hash->{dest_type}]\n"
+            $DEST_TYPE_MAP{ $params->{dest_type} } :
+        croak "invalid destination type [$params->{dest_type}]\n"
             . "  valid types: ['" 
             . join( "', '", keys %DEST_TYPE_MAP ) 
             . "']\n";
 
+    
+    # ah, the little-understood "repeat" clause
     my $repeat = '';
-    if ( defined $params_hash->{min_vals} || defined $params_hash->{max_vals} ) {
+    if ( defined $params->{min_vals} || defined $params->{max_vals} ) {
+        croak "repeat spec not valid when using default value\n" if $params->{default_num};
         $repeat .= '{';
-        $repeat .= $params_hash->{min_vals} if defined $params_hash->{min_vals};
-        $repeat .= "," . (defined $params_hash->{max_vals} ? $params_hash->{max_vals} : '')
-            if exists $params_hash->{max_vals};
+        $repeat .= $params->{min_vals} if defined $params->{min_vals};
+        $repeat .= "," . (defined $params->{max_vals} ? $params->{max_vals} : '')
+            if exists $params->{max_vals};
         $repeat .= '}';
     }
 
-    return $data_type . $dest_type . $repeat;
+    return $val_type . $dest_type . $repeat;
 }
 
 

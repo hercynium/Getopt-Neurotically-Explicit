@@ -18,7 +18,7 @@ sub BUILDARGS {
 
     if ( !defined $args{name} ) {
         $args{name} = ($args{long}
-          or croak "Can't set name if long is missing!\n");
+            or croak "Can't set name if long is missing!\n");
     }
 
     if ( !defined $args{default} ) {
@@ -27,7 +27,7 @@ sub BUILDARGS {
     }
     
     $args{val_type} = 'integer'
-      if ($args{opt_type} and $args{opt_type} =~ '^incr');
+        if ($args{opt_type} and $args{opt_type} =~ '^incr');
 
     if ( !defined $args{dest_type} ) {
         $args{dest_type} =
@@ -38,20 +38,20 @@ sub BUILDARGS {
     }
 
     with 'Getopt::Nearly::Everything::Option::MultiUseRole'
-      if ($args{opt_type} and $args{opt_type} =~ '^incr')
-      or $args{dest_type} =~ /array|hash/
-      or ($args{max_use} and $args{max_use} > 1);
+        if ($args{opt_type} and $args{opt_type} =~ '^incr')
+        or $args{dest_type} =~ /array|hash/
+        or ($args{max_use} and $args{max_use} > 1);
 
     with 'Getopt::Nearly::Everything::Option::MultiValRangeRole'
-      if exists $args{min_vals} or exists $args{max_vals};
+        if exists $args{min_vals} or exists $args{max_vals};
 
     with 'Getopt::Nearly::Everything::Option::MultiValFixedRole'
-      if exists $args{vals};
+        if exists $args{vals};
 
     if ( $args{negatable} ) {
-      croak "negatable only makes sense for opt_type = flag\n"
-        unless $args{opt_type} eq 'flag';
-      with 'Getopt::Nearly::Everything::Option::NegatableRole';
+        croak "negatable only makes sense for opt_type = flag\n"
+          unless $args{opt_type} eq 'flag';
+        with 'Getopt::Nearly::Everything::Option::NegatableRole';
     }
 
     return \%args;
@@ -60,18 +60,18 @@ sub BUILDARGS {
 # Doing this because something seems to be broken in Moo???
 # TODO: investiagate... I may be Doing It Wrong (tm)
 sub BUILD {
-  my ($self, $args) = @_;
-  # so icky, but my role attributes aren't getting populated without this :(
-  @{$self}{$_} = $args->{$_} for keys %$args;
+    my ($self, $args) = @_;
+    # so icky, but my role attributes aren't getting populated without this :(
+    @{$self}{$_} = $args->{$_} for keys %$args;
 }
 
 sub spec {
-  my ($self) = @_;
-  # this is where I want a real MOP, but not bad enough yet, evidently.
-  # still, it would be nice to be able to convert all object attributes
-  # to a hash reliably and including all roles...
-  my %params = %$self;
-  return Getopt::Nearly::Everything::SpecBuilder->build(%params);
+    my ($self) = @_;
+    # this is where I want a real MOP, but not bad enough yet, evidently.
+    # still, it would be nice to be able to convert all object attributes
+    # to a hash reliably and including all roles...
+    my %params = %$self;
+    return Getopt::Nearly::Everything::SpecBuilder->build(%params);
 }
 
 
@@ -161,6 +161,15 @@ has default => (
     },
 );
 
+has default_num => (
+    is => 'ro',
+    documentation => q{
+        The default numeric value assigned to this option if a value is not supplied
+        on the command line. Only used when parsing from an option spec.
+    },
+);
+
+
 has destination => (
     is => 'ro',
     documentation => q{
@@ -244,7 +253,7 @@ has val_type => (
     },
 );
 
-has value_required => (
+has val_required => (
     is => 'ro',
     isa => Bool,
     documentation => q{

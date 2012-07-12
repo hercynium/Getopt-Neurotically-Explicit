@@ -12,13 +12,18 @@ use Getopt::Nearly::Everything::SpecParser;
 use Getopt::Nearly::Everything::Option;
 
 ## Base Getopt::Long config flags to use for GoNE
-#use Getopt::Long qw(
+use Getopt::Long qw();
+
+#qw(
+#  GetOptionsFromArray
 #  :config
 #    ignore_case
 #    gnu_getopt
 #    bundling_override
 #    no_auto_abbrev
 #);
+
+sub add_option { goto &add_opt }
 
 sub add_opt {
     my ($self, %params) = @_;
@@ -30,6 +35,27 @@ sub add_opt {
     $self->{opts}{$opt->name} = $opt;
 
     return $self;
+}
+
+sub getopts {
+    my ($self, @args) = @_;
+
+    my $gol = Getopt::Long::Parser->new(
+        config => [qw(
+            ignore_case
+            gnu_getopt
+            bundling_override
+            no_auto_abbrev
+        )]
+    );
+    my %opt;
+    local @ARGV = @args;
+    $gol->getoptions(
+        \%opt,
+        (map { $self->opt($_)->spec } $self->opt_names),
+    );
+print Dumper [(map { $self->opt($_)->spec } $self->opt_names)];
+    return \%opt;
 }
 
 
