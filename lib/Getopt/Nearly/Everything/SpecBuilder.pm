@@ -1,18 +1,19 @@
 use strict;
 use warnings;
 package Getopt::Nearly::Everything::SpecBuilder;
-# ABSTRACT: Build a Getopt::Long option specification from a GoNE spec
-
+# ABSTRACT: Build a Getopt::Long option spec from a set of attributes
 use Carp;
 use Data::Dumper;
-our @CARP_NOT = qw( Getopt::Nearly::Everything Getopt::Nearly::Everything::Option );
 
 
 our %DATA_TYPE_MAP = (
     integer => 'i',
+    int     => 'i',
     string  => 's',
+    str     => 's',
     float   => 'f',
     extint  => 'o',
+    ext     => 'o',
 );
 
 our %DEST_TYPE_MAP = (
@@ -24,9 +25,7 @@ our %DEST_TYPE_MAP = (
 
 sub new {
     my ($class, %params) = @_;
-
     my $self = bless { %params }, $class;
-
     return $self;
 }
 
@@ -83,30 +82,17 @@ sub _spec_type {
 sub _build_arg_spec {
     my ($self, $params) = @_;
 
-    my $val_type = $DATA_TYPE_MAP{ $params->{val_type} || 'integer' } or
-        croak "invalid value type [$params->{val_type}]\n"
-            . "  valid types: ['" 
-            . join( "', '", keys %DATA_TYPE_MAP ) 
-            . "']\n";
+    my $val_type = $DATA_TYPE_MAP{ lc($params->{val_type}) || 'int' } or
+        croak "invalid value type [$params->{val_type}]\n";
 
    # special cases for incremental opts or opts with default numeric value
    $val_type = $params->{default_num} if $params->{default_num};
    $val_type = '+' if $params->{opt_type} =~ /^incr/ and $val_type eq 'i';
 
     # empty or missing destination type is allowable, so this accounts for that.
-    my $passed_dest_type = ! defined $params->{dest_type} ? 
-        '' : $params->{dest_type};
-
-    # This is really ugly, but my brain's fried and it works
-    my $dest_type = 
-        $passed_dest_type eq '' ? '' :
-        exists $DEST_TYPE_MAP{ $passed_dest_type } ? 
-            $DEST_TYPE_MAP{ $params->{dest_type} } :
-        croak "invalid destination type [$params->{dest_type}]\n"
-            . "  valid types: ['" 
-            . join( "', '", keys %DEST_TYPE_MAP ) 
-            . "']\n";
-
+    my $dest_type = ! $params->{dest_type} ? '' : $DEST_TYPE_MAP{ $params->{dest_type} };
+    croak "invalid destination type [@{[ $params->{dest_type} || '' ]}]\n"
+      unless defined $dest_type;
     
     # ah, the little-understood "repeat" clause
     my $repeat = '';

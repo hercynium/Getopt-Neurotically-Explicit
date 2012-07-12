@@ -1,9 +1,9 @@
+use strict;
+use warnings;
 package Getopt::Nearly::Everything::SpecParser;
-# ABSTRACT: Parse a Getopt::Long option specification
-use Moo;
+# ABSTRACT: Parse a Getopt::Long option spec into a set of attributes
 use Carp;
 use Data::Dumper;
-our @CARP_NOT = qw( Getopt::Nearly::Everything );
 
 
 # holds the current opt spec, used for error and debugging code...
@@ -13,14 +13,18 @@ my $CUR_OPT_SPEC;
 my $CUR_OPTS;
 
 
-has debug => (is => 'rw');
+sub new {
+    my ($class, %params) = @_;
+    my $self = bless { %params }, $class;
+    return $self;
+}
 
 
 sub parse {
     my ($self, $spec, $params) = @_;
 
     $CUR_OPT_SPEC = $spec; # temporary global...
-    $CUR_OPTS = { %{$params || {}}, %{ ref($self) ? $self : {} } };
+    $CUR_OPTS = { %{$params || {} }, %{ ref($self) ? $self : {} } };
 
     print "DEBUG: spec: [$spec]\n" if $CUR_OPTS->{debug};
     print "DEBUG: params: " . Dumper $CUR_OPTS if $CUR_OPTS->{debug};
@@ -36,6 +40,7 @@ sub parse {
     my %name_params = $self->_process_name_spec( $name_spec );
     my %arg_params  = $self->_process_arg_spec( $opt_type, $arg_spec );
 
+    ### It is necessary to compute these here for compat. with GoL
     ### I feel that this block should be relocated... but WHERE?
     if ( $arg_params{negatable} ) {
 
@@ -50,7 +55,7 @@ sub parse {
     undef $CUR_OPT_SPEC; # done with global var.
     undef $CUR_OPTS;     # ditto
 
-    my %result = $self->_fill_params(%name_params, %arg_params);
+    my %result = (%name_params, %arg_params);
 
     return wantarray ? %result : \%result;
 }
@@ -112,10 +117,8 @@ sub _process_arg_spec {
     return %params unless $arg_spec;
 
     # parse the arg spec...
-    if ( $arg_spec !~ $ARG_SPEC_QR ) {
-        croak "Could not parse the argument part of the option spec "
-            . "[$CUR_OPT_SPEC].\n";
-    }
+    croak "Could not parse the argument part of the option spec [$CUR_OPT_SPEC]\n"
+        if $arg_spec !~ $ARG_SPEC_QR;
     my $val_type      = $1;               # [siof]
     my $default_num   = $2;               # \d+
     my $incr_type     = $3;               # \+
@@ -138,6 +141,15 @@ sub _process_arg_spec {
     croak "can't specify a val_type unless opt_type is ':' or '='\n"
         if defined $val_type and $opt_type !~ /[:=]/;
 
+    croak "repeat can only be used with a required value\n"
+        if (exists $params{min_vals} or exists $params{max_vals})
+           and $opt_type ne '=';
+
+    # one repetition value, no comma...
+    if ( exists $params{min_vals} and ! exists $params{max_vals} ) {
+        $params{num_vals} = delete $params{min_vals};
+    }
+
     if ( $val_type ) {
         $params{val_type} = $val_type eq 's' ? 'string' 
                           : $val_type eq 'i' ? 'integer'
@@ -151,15 +163,6 @@ sub _process_arg_spec {
         $params{dest_type} = $dest_type eq '%' ? 'hash'
                            : $dest_type eq '@' ? 'array'
                            : croak "Invalid destination type [$dest_type]\n";
-    }
-
-    croak "repeat can only be used with a required value\n"
-        if (exists $params{min_vals} or exists $params{max_vals})
-           and $opt_type ne '=';
-
-    # one repetition value, no comma...
-    if ( exists $params{min_vals} and ! exists $params{max_vals} ) {
-        $params{num_vals} = delete $params{min_vals};
     }
 
     return %params;
@@ -184,14 +187,14 @@ sub _process_opt_type {
                 . "[$opt_type] does not take an argument spec.";
         }
         if ( $opt_type eq '+' ) {
-           $params{opt_type} = 'incr'; # incrementing number
+           $params{opt_type} = 'incr';
         }
         if ( $opt_type eq '!' ) {
-            $params{opt_type} = 'flag'; # boolean, 
-            $params{negatable} = 1; # allow no- for negation
+            $params{opt_type} = 'flag';
+            $params{negatable} = 1;
         }
         if ( $opt_type eq '' ) {
-            $params{opt_type} = 'flag'; # boolean
+            $params{opt_type} = 'flag';
         }
         return %params;
     }
@@ -199,10 +202,10 @@ sub _process_opt_type {
     $params{opt_type} = 'simple';
 
     if ( $opt_type eq '=' ) {
-        $params{val_required} = 1; # if option present, value required
+        $params{val_required} = 1;
     }
     elsif ( $opt_type eq ':' ) {
-        $params{val_required} = 0; # if option present, no value required
+        $params{val_required} = 0;
     }
     else {
         croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
@@ -224,13 +227,6 @@ sub _generate_negation_names {
     my ($self, @names) = @_;
     my @neg_names = map { ("no-$_", "no$_") } grep { length } @names;
     return @neg_names;
-}
-
-# Fills in various parameters from the ones already known
-sub _fill_params {
-    my ($self, %params) = @_;
-
-    return %params;
 }
 
 
