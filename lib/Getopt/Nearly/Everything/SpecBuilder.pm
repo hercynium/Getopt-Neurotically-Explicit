@@ -70,13 +70,9 @@ sub _spec_type {
     my ($self, $params) = @_;
 
     # note: keep in mind - order is important here!
-    return '=' if $params->{value_required};
+    return ':' if defined $params->{val_required} and $params->{val_required} == 0;
+    return '=' if $params->{val_required};
     return '!' if $params->{negatable};
-    return ':' if $params->{opt_type} eq 'simple';
-    return ':' if $params->{opt_type} =~ '^incr' 
-    	          and defined $params->{val_type} 
-    	          and $params->{val_type} eq 'integer'
-                  and exists $params->{value_required};
     return '+' if $params->{opt_type} =~ '^incr';
     return ''  if $params->{opt_type} eq 'flag';
     
@@ -87,12 +83,8 @@ sub _spec_type {
 sub _build_arg_spec {
     my ($self, $params) = @_;
 
-    if ( exists $params->{default_num} ) {
-       print "POOP\n";
-    }
-
     my $val_type = $DATA_TYPE_MAP{ $params->{val_type} || 'integer' } or
-        croak "invalid value type [$params->{value_type}]\n"
+        croak "invalid value type [$params->{val_type}]\n"
             . "  valid types: ['" 
             . join( "', '", keys %DATA_TYPE_MAP ) 
             . "']\n";
@@ -125,6 +117,9 @@ sub _build_arg_spec {
         $repeat .= "," . (defined $params->{max_vals} ? $params->{max_vals} : '')
             if exists $params->{max_vals};
         $repeat .= '}';
+    }
+    elsif ( defined $params->{num_vals} ) {
+        $repeat .= "{$params->{num_vals}}";
     }
 
     return $val_type . $dest_type . $repeat;

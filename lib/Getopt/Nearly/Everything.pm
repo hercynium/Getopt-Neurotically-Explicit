@@ -37,6 +37,14 @@ sub add_opt {
     return $self;
 }
 
+sub add_options { goto &add_opts }
+
+sub add_opts {
+  my ($self, @opt_attrs) = @_;
+  $self->add_opt(%$_) for @opt_attrs;
+  return $self;
+}
+
 sub getopts {
     my ($self, @args) = @_;
 

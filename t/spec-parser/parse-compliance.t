@@ -91,7 +91,7 @@ for my $spec ( @GOOD_SPECS, @BAD_SPECS ) {
 sub check_name_compliance {
     my ( $gone_data, $opctl, $opt_name ) = @_;
 
-    my $gone_name    = $gone_data->{name};
+    my $gone_name    = $gone_data->{long};
     my @gone_aliases = @{ $gone_data->{aliases} };
 
     my %gone_names =

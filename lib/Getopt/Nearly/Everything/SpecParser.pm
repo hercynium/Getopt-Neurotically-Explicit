@@ -40,7 +40,7 @@ sub parse {
     if ( $arg_params{negatable} ) {
 
         my @neg_names = $self->_generate_negation_names( 
-            $name_params{name},
+            $name_params{long},
             $name_params{short},
             @{ $name_params{aliases} } 
         );
@@ -73,7 +73,6 @@ sub _process_name_spec {
 
     my %params;
 
-    $params{name}     = $1;
     $params{long}     = $1;
     $params{aliases}  = [
         grep { defined $_ }
@@ -89,7 +88,7 @@ sub _process_name_spec {
 our $ARG_SPEC_QR = qr{
     (?:
         ( [siof] )    # value_type as $1
-      | ( \d+ )       # default_value_int as $2 (not always valid)
+      | ( \d+ )       # default_num as $2 (not always valid)
       | ( [+] )       # increment type as $3    (not always valid)
     )
     ( [@%] )?         # destination data type as $4
@@ -117,26 +116,29 @@ sub _process_arg_spec {
         croak "Could not parse the argument part of the option spec "
             . "[$CUR_OPT_SPEC].\n";
     }
-    my $val_type      = $1;
-    my $default_num   = $2; # this implies val type of i with a default value
-    my $incr_type     = $3; # this implies val type i and opt type incremental
-    my $dest_type     = $4;
-    $params{min_vals} = $5 if defined $5;
-    $params{max_vals} = $6 if defined $6;
+    my $val_type      = $1;               # [siof]
+    my $default_num   = $2;               # \d+
+    my $incr_type     = $3;               # \+
+    my $dest_type     = $4;               # [@%]
+    $params{min_vals} = $5 if defined $5; # \d+
+    $params{max_vals} = $6 if defined $6; # \d+
 
-    if ( $opt_type eq ':' and defined $default_num ) {
-        $params{val_type} = 'integer';
-        $params{opt_type} = 'simple';
-        $params{default} = $default_num;
-    }
-    elsif ( $opt_type eq ':' and defined $incr_type ) {
-        $params{val_type} = 'integer';
+    croak "can't use an + here unless opt_type is ':'\n"
+        if defined $incr_type and $opt_type ne ':';
+    if ( defined $incr_type ) {
         $params{opt_type} = 'incr';
     }
-    elsif (! $val_type ) {
-        croak "Invalid option spec [$CUR_OPT_SPEC]: option type "
-            . "[$opt_type] must be followed by a valid data type.\n";
-    } else {
+
+    croak "can't use a default number unless opt_type is ':'\n"
+        if defined $default_num and $opt_type ne ':';
+    if ( defined $default_num ) {
+        $params{default_num} = $default_num;
+    }
+
+    croak "can't specify a val_type unless opt_type is ':' or '='\n"
+        if defined $val_type and $opt_type !~ /[:=]/;
+
+    if ( $val_type ) {
         $params{val_type} = $val_type eq 's' ? 'string' 
                           : $val_type eq 'i' ? 'integer'
                           : $val_type eq 'o' ? 'extint'
@@ -145,16 +147,20 @@ sub _process_arg_spec {
         $params{opt_type} = 'simple';
     }
 
-    $params{dest_type} = !defined $dest_type ? 'scalar'
-                       : $dest_type eq '%'   ? 'hash'
-                       : $dest_type eq '@'   ? 'array'
-                       : croak "Invalid destination type [$dest_type]\n";    
+    if ( defined $dest_type ) {
+        $params{dest_type} = $dest_type eq '%' ? 'hash'
+                           : $dest_type eq '@' ? 'array'
+                           : croak "Invalid destination type [$dest_type]\n";
+    }
 
-    $params{multi} = 1 if $params{dest_type} eq 'hash'
-                       or $params{dest_type} eq 'array'
-                       or $params{opt_type}  eq 'incr';
+    croak "repeat can only be used with a required value\n"
+        if (exists $params{min_vals} or exists $params{max_vals})
+           and $opt_type ne '=';
 
-#print Dumper \%params, $opt_type, $val_type, $default_num, $incr_type, $dest_type; exit;
+    # one repetition value, no comma...
+    if ( exists $params{min_vals} and ! exists $params{max_vals} ) {
+        $params{num_vals} = delete $params{min_vals};
+    }
 
     return %params;
 }
@@ -164,7 +170,8 @@ sub _process_arg_spec {
 #   = - option requires an argument
 #   : - option argument optional (defaults to '' or 0)
 #   ! - option is a flag and may be negated (0 or 1)
-#   + - option is a flag starting at 0 and incremented each time specified
+#   + - option is an int starting at 0 and incremented each time specified
+#     - option is a flag to be turned on when used
 sub _process_opt_type {
     my ($self, $opt_type, $arg_spec) = @_;
 
@@ -190,10 +197,10 @@ sub _process_opt_type {
     }
 
     if ( $opt_type eq '=' ) {
-        $params{value_required} = 1; # if option present, value required
+        $params{val_required} = 1; # if option present, value required
     }
     elsif ( $opt_type eq ':' ) {
-        $params{value_required} = 0; # if option present, no value required
+        $params{val_required} = 0; # if option present, no value required
     }
     else {
         croak "Invalid option spec [$CUR_OPT_SPEC]: option type "

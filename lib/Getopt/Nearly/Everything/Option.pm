@@ -21,14 +21,27 @@ sub BUILDARGS {
             or croak "Can't set name if long is missing!\n");
     }
 
+    if ( ! exists $args{opt_type} ) {
+        $args{opt_type} = 'simple';
+    }
+
+    # default_num is a special case for the GoL backend. Like, *really* special :-/
+    if ( defined $args{default_num} ) {
+        croak "can't use both default and default_num\n" if defined $args{default};
+        croak "default_num must be an integer from 0-9\n"
+            if $args{default_num} < 0 or $args{default_num} > 9;
+        croak "can't use default_num unless value is optional\n" if $args{val_required};
+        croak "default_num only works with opt_type=simple\n"
+            unless $args{opt_type} eq 'simple';
+
+        $args{default} = $args{default_num}
+    }
+
     if ( !defined $args{default} ) {
         $args{default} =
             _SCALAR0($args{destination}) ? ${$args{destination}} : $args{destination};
     }
     
-    $args{val_type} = 'integer'
-        if ($args{opt_type} and $args{opt_type} =~ '^incr');
-
     if ( !defined $args{dest_type} ) {
         $args{dest_type} =
             _SCALAR0(   $args{destination} ) ? 'scalar' :
@@ -65,13 +78,14 @@ sub BUILD {
     @{$self}{$_} = $args->{$_} for keys %$args;
 }
 
+# this is where I want a real MOP, but not bad enough yet, evidently.
+# still, it would be nice to be able to convert all object attributes
+# to a hash reliably and including all roles...
+sub attrs { my ($self) = @_; return wantarray ? %$self : +{ %$self } }
+
 sub spec {
     my ($self) = @_;
-    # this is where I want a real MOP, but not bad enough yet, evidently.
-    # still, it would be nice to be able to convert all object attributes
-    # to a hash reliably and including all roles...
-    my %params = %$self;
-    return Getopt::Nearly::Everything::SpecBuilder->build(%params);
+    return Getopt::Nearly::Everything::SpecBuilder->build( $self->attrs );
 }
 
 
@@ -81,6 +95,7 @@ has opt_type => (
     is => 'ro',
     isa => Str,
     required => 1,
+    default => sub { 'simple' },
     documentation => q{
         The "type" of this option itself. Put simply, must be one of
         'flag', 'incremental', or 'simple', which correspond to the
@@ -141,6 +156,7 @@ has aliases => (
 has dest_type => (
     is => 'ro',
     isa => Str,
+    default => sub { 'scalar' },
     documentation => q{
         This is the data type in which the values will be stored.
         It will be one of 'scalar', 'hash', or 'array'.
@@ -165,7 +181,7 @@ has default_num => (
     is => 'ro',
     documentation => q{
         The default numeric value assigned to this option if a value is not supplied
-        on the command line. Only used when parsing from an option spec.
+        on the command line. Only used when parsing from a GoL option spec.
     },
 );
 
@@ -249,7 +265,7 @@ has val_type => (
         The Getopt::Long type of the value of this option. Put simply, must
         be one of 'string', 'integer', 'extint', or 'float' which correspond
         to the 's', 'i', 'o', and 'f' characters after an '=' or ':' in a
-        Getopt::Long spec.
+        Getopt::Long spec. May also be '', which GoL treats as 's'.
     },
 );
 
