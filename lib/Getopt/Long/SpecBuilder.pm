@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-package Getopt::Nearly::Everything::SpecBuilder;
+package Getopt::Long::SpecBuilder;
 
 # ABSTRACT: Build a Getopt::Long option spec from a set of attributes
 use Carp;
@@ -114,45 +114,43 @@ __END__
 =head1 SYNOPSIS
 
 This module builds a Getopt::Long option specification from a hash of option
-parameters as would be returned by Getopt::Nearly::Everything::SpecParser->parse($spec)
-and/or Getopt::Nearly::Everything->opt($opt_name)->params().
+parameters as would be returned by Getopt::Long::SpecParser->parse($spec)
+and/or Getopt::Nearly::Everything->opt($opt_name)->attrs().
 
 Here's an example of use:
 
-    use Getopt::Nearly::Everything::SpecBuilder;
+    use Getopt::Long::SpecBuilder;
 
-    my %opt_params = (
-        opt_type       => 'value'
+    my %opt_attrs = (
+        opt_type       => 'simple'
         value_required => 1,
         value_type     => 'string',
-        max_rep        => '5',
+        max_vals       => '5',
         dest_type      => 'array',
-        min_rep        => '1',
-        aliases        => [ 'f' ],
-        name           => 'foo',
-        multi          => 1,
+        min_vals       => '1',
+        short          => [ 'f' ],
+        long           => 'foo',
     );
 
-    my $builder   = Getopt::Nearly::Everything::SpecBuilder->new();
-    my $spec      = $builder->build( %opt_names );
+    my $builder   = Getopt::Long::SpecBuilder->new();
+    my $spec      = $builder->build( %opt_attrs );
     print $spec;  # output: 'foo|f=s@{1,5}'
     
     # OR...
     
     my $spec = 
-        Getopt::Nearly::Everything::SpecBuilder->build( %opt_params );
+        Getopt::Long::SpecBuilder->build( %opt_attrs );
 
 =head1 METHODS
 
 =head2 new
 
-Create a new builder object, and if passed params, build a spec to 
-return with built_spec()
+Create a new builder object.
 
 =head2 build
 
-Build a Getopt::Long option specification from the parameters passed in (as 
-a hash or hashref) and return the spec as a string
+Build a Getopt::Long option specification from the attributes passed in
+and return the spec as a string
 
 =head1 SEE ALSO
 

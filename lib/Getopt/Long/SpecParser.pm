@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-package Getopt::Nearly::Everything::SpecParser;
+package Getopt::Long::SpecParser;
 
 # ABSTRACT: Parse a Getopt::Long option spec into a set of attributes
 use Carp;
@@ -237,15 +237,15 @@ describes... if that makes any sense at all...
 
 Perhaps a little code snippet.
 
-    use Getopt::Nearly::Everything::SpecParser;
+    use Getopt::Long::SpecParser;
 
-    my $parser = Getopt::Nearly::Everything::SpecParser->new();
+    my $parser = Getopt::Long::SpecParser->new();
     my %spec_info = $parser->parse( 'foo|f=s@{1,5}' );
     
     # OR...
     
     my %spec_info = 
-        Getopt::Nearly::Everything::SpecParser->parse( 'foo|f=s@{1,5}' );
+        Getopt::Long::SpecParser->parse( 'foo|f=s@{1,5}' );
 
 %spec_info should be a hash containing info about the parsed Getopt::Long 
 option specification
@@ -256,11 +256,12 @@ option specification
 
 construct a new parser.
 
-    my $parser = Getopt::Nearly::Everything::SpecParser->new();
+    my $parser = Getopt::Long::SpecParser->new();
     # OR...
-    my $parser = Getopt::Nearly::Everything::SpecParser->new( 
+    my $parser = Getopt::Long::SpecParser->new( 
         debug => 1,
     );
+
 
 =head2 parse
 
@@ -268,7 +269,7 @@ parse an option specification
 
     my %spec_info = $parser->parse( 'foo' );
     # OR...
-    my $spec_info = $parser->parse( 'foo' );
+    my %spec_info = Getopt::Long::SpecParser->parse( 'foo' );
 
 return the info parsed from the spec as a hash, or hashref, 
 depending on context.
