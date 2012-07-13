@@ -30,7 +30,11 @@ sub add_opt {
 
     my %opt_params = $self->_process_params( %params );
     
-    my $opt = Getopt::Nearly::Everything::Option->new(%opt_params);
+    my $opt = eval {
+        Getopt::Nearly::Everything::Option->new(%opt_params);
+    } or do {
+        croak "Invalid set of attrs: " . Dumper \%opt_params . "\n  $@\n";
+    };
 
     $self->{opts}{$opt->name} = $opt;
 
@@ -56,13 +60,23 @@ sub getopts {
             no_auto_abbrev
         )]
     );
+
+    my @specs;
+    for my $opt_name ($self->opt_names) {
+        my $spec = eval {
+            $self->opt($opt_name)->spec;
+        } or do {
+            croak "Invalid set of attrs for option [$opt_name]: $@";
+        };
+        push @specs, $spec;
+    }
+
+print Dumper \@specs;
+
     my %opt;
     local @ARGV = @args;
-    $gol->getoptions(
-        \%opt,
-        (map { $self->opt($_)->spec } $self->opt_names),
-    );
-print Dumper [(map { $self->opt($_)->spec } $self->opt_names)];
+    $gol->getoptions( \%opt, @specs );
+
     return \%opt;
 }
 

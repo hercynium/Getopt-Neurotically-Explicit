@@ -70,8 +70,13 @@ sub _spec_type {
     return ':' if defined $params->{val_required} and $params->{val_required} == 0;
     return '=' if $params->{val_required};
     return '!' if $params->{negatable};
+    return ''  unless defined $params->{opt_type};
     return '+' if $params->{opt_type} =~ '^incr';
     return ''  if $params->{opt_type} eq 'flag';
+    return ':' if defined $params->{default_num}
+        or defined $params->{val_type}
+        or defined $params->{destination}
+        or defined $params->{dest_type};
 
     die "Could not determine option type from spec!\n";
 }
@@ -79,12 +84,12 @@ sub _spec_type {
 sub _build_arg_spec {
     my ( $self, $params ) = @_;
 
-    my $val_type = $DATA_TYPE_MAP{ lc( $params->{val_type} ) || 'int' }
+    my $val_type = $DATA_TYPE_MAP{ lc( $params->{val_type} || 'str' ) }
         or croak "invalid value type [$params->{val_type}]\n";
 
     # special cases for incremental opts or opts with default numeric value
     $val_type = $params->{default_num} if $params->{default_num};
-    $val_type = '+' if $params->{opt_type} =~ /^incr/ and $val_type eq 'i';
+    $val_type = '+' if $params->{opt_type} =~ /^incr/ and !$params->{val_type};
 
     # empty or missing destination type is allowable, so this accounts for that.
     my $dest_type = !$params->{dest_type} ? '' : $DEST_TYPE_MAP{ $params->{dest_type} };
