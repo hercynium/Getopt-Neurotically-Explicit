@@ -6,11 +6,11 @@ use Data::Dumper;
 
 use lib qw( ../lib lib);
 
-use Getopt::Nearly::Everything::SpecParser;
-use Getopt::Nearly::Everything::SpecBuilder;
+use Getopt::Long::SpecParser;
+use Getopt::Long::SpecBuilder;
 
-my $parser = Getopt::Nearly::Everything::SpecParser->new();
-my $builder = Getopt::Nearly::Everything::SpecBuilder->new();
+my $parser = Getopt::Long::SpecParser->new();
+my $builder = Getopt::Long::SpecBuilder->new();
 
 my @SPECS = (
     'foo',

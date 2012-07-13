@@ -6,9 +6,9 @@ use Data::Dumper;
 
 use lib qw( ../lib lib);
 
-use Getopt::Nearly::Everything::SpecBuilder;
+use Getopt::Long::SpecBuilder;
 
-my $builder = Getopt::Nearly::Everything::SpecBuilder->new();
+my $builder = Getopt::Long::SpecBuilder->new();
 
 my @OPTION_PARAMS = (
         {

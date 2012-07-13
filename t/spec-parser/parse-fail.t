@@ -7,7 +7,7 @@ use Test::More;
 
 plan( tests => 1);
 
-my $CLASS = 'Getopt::Nearly::Everything::SpecParser';
+my $CLASS = 'Getopt::Long::SpecParser';
 
 use_ok( $CLASS ) or die "Couldn't compile [$CLASS]\n";
 

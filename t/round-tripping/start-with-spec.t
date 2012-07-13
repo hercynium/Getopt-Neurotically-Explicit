@@ -7,8 +7,8 @@ use Data::Dumper;
 our ($BUILDER_CLASS, $PARSER_CLASS);
 
 BEGIN {
-  $BUILDER_CLASS = 'Getopt::Nearly::Everything::SpecBuilder';
-  $PARSER_CLASS  = 'Getopt::Nearly::Everything::SpecParser';
+  $BUILDER_CLASS = 'Getopt::Long::SpecBuilder';
+  $PARSER_CLASS  = 'Getopt::Long::SpecParser';
   use_ok($BUILDER_CLASS);
   use_ok($PARSER_CLASS);
 }

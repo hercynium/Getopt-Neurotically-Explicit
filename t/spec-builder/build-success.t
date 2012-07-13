@@ -6,7 +6,7 @@ use Test::More;
 
 plan( tests => 1 );
 
-my $CLASS = 'Getopt::Nearly::Everything::SpecBuilder';
+my $CLASS = 'Getopt::Long::SpecBuilder';
 use_ok( $CLASS );
 
 

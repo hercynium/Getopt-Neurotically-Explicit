@@ -8,7 +8,7 @@ use Data::Dumper;
 
 
 # Turns a Getopt::Long (GoL) spec into args for GoNE
-use Getopt::Nearly::Everything::SpecParser;
+use Getopt::Long::SpecParser;
 use Getopt::Nearly::Everything::Option;
 
 ## Base Getopt::Long config flags to use for GoNE
@@ -74,7 +74,7 @@ sub _process_params {
     # and merge those into the passed params.
     if ( exists $params{spec} ) {
         my %more_params = 
-            Getopt::Nearly::Everything::SpecParser->parse( $params{spec} );
+            Getopt::Long::SpecParser->parse( $params{spec} );
 
         while ( my ($key, $val) = each %more_params ) {
             next if $key eq 'name';

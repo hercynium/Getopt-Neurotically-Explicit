@@ -48,7 +48,7 @@ my $use_test_count  = 2;
 
 plan( tests => $spec_test_count + $use_test_count );
 
-my $CLASS = 'Getopt::Nearly::Everything::SpecParser';
+my $CLASS = 'Getopt::Long::SpecParser';
 
 use_ok( $CLASS ) or die "Couldn't compile [$CLASS]\n";
 use_ok( 'Getopt::Long' ) or die "couldn't use [Getopt::Long]!\n";

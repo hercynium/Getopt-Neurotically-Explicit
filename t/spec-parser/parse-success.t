@@ -32,7 +32,7 @@ my @BAD_SPECS = (
 # one for each spec in each list, plus each use_ok()
 plan( tests => @GOOD_SPECS + @BAD_SPECS + 2 );
 
-my $CLASS = 'Getopt::Nearly::Everything::SpecParser';
+my $CLASS = 'Getopt::Long::SpecParser';
 
 use_ok( $CLASS ) or die "Couldn't compile [$CLASS]\n";
 

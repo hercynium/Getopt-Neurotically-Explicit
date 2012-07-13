@@ -6,7 +6,7 @@ use Params::Util qw(_HASHLIKE _SCALAR0 _ARRAYLIKE);
 use Carp;
 use List::MoreUtils qw(uniq);
 use Data::Dumper;
-use Getopt::Nearly::Everything::SpecBuilder;
+use Getopt::Long::SpecBuilder;
 
 
 # Before invoking the constructor, figure out what kind of
@@ -85,7 +85,7 @@ sub attrs { my ($self) = @_; return wantarray ? %$self : +{ %$self } }
 
 sub spec {
     my ($self) = @_;
-    return Getopt::Nearly::Everything::SpecBuilder->build( $self->attrs );
+    return Getopt::Long::SpecBuilder->build( $self->attrs );
 }
 
 
